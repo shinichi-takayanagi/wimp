@@ -562,7 +562,7 @@ function chartAgeAtPointer(event) {
   if (svgX < plotStart || svgX > plotEnd) return null;
   const progress = (svgX - plotStart) / (plotEnd - plotStart);
   return Math.min(latestConfig.endAge,
-    latestConfig.currentAge + Math.floor(progress * (latestConfig.endAge - latestConfig.currentAge)));
+    latestConfig.currentAge + Math.round(progress * (latestConfig.endAge - latestConfig.currentAge)));
 }
 
 chart.addEventListener('click', (event) => {
