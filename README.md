@@ -1,6 +1,6 @@
 # WIMP
 
-[![Test and deploy](https://github.com/shinichi-takayanagi/wimp/actions/workflows/pages.yml/badge.svg)](https://github.com/shinichi-takayanagi/wimp/actions/workflows/pages.yml)
+[![CI/CD](https://github.com/shinichi-takayanagi/wimp/actions/workflows/pages.yml/badge.svg)](https://github.com/shinichi-takayanagi/wimp/actions/workflows/pages.yml)
 ![JavaScript](https://img.shields.io/badge/JavaScript-ES%20modules-f1e05a)
 
 WIMP (**W**ealth, **I**ncome & **M**oney-flow **P**rojection) is a browser-based tool for projecting monthly financial asset balances from spending, employment income, pension income, and an assumed investment return. It uses no external libraries or server-side processing.
