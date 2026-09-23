@@ -27,11 +27,11 @@ function addStageRow(stage) {
   row.className = 'stage-row';
   const ageLabel = document.createElement('label');
   ageLabel.className = 'stage-field';
-  ageLabel.innerHTML = '<span class="visually-hidden">支出の切替年齢</span><span class="input-wrap"><input class="stage-age" type="number" min="18" max="110" step="1" inputmode="numeric" required aria-label="支出の切替年齢"><span class="unit">歳</span></span>';
+  ageLabel.innerHTML = '<span class="input-wrap"><span class="field-number stage-number" aria-hidden="true"></span><input class="stage-age" type="number" min="18" max="110" step="1" inputmode="numeric" required aria-label="支出の切替年齢"><span class="unit">歳</span></span>';
   ageLabel.querySelector('input').value = stage.age;
   const spendingLabel = document.createElement('label');
   spendingLabel.className = 'stage-field';
-  spendingLabel.innerHTML = '<span class="visually-hidden">切替後の毎月の支出</span><span class="input-wrap"><input class="stage-spending" type="number" min="0" step="0.1" inputmode="decimal" required aria-label="切替後の毎月の支出"><span class="unit">万円</span></span>';
+  spendingLabel.innerHTML = '<span class="input-wrap"><span class="field-number stage-number" aria-hidden="true"></span><input class="stage-spending" type="number" min="0" step="0.1" inputmode="decimal" required aria-label="切替後の毎月の支出"><span class="unit">万円</span></span>';
   spendingLabel.querySelector('input').value = toMan(stage.monthlySpending);
   const remove = document.createElement('button');
   remove.className = 'remove-stage';
@@ -40,6 +40,15 @@ function addStageRow(stage) {
   remove.textContent = '×';
   row.append(ageLabel, spendingLabel, remove);
   stagesElement.append(row);
+  updateStageNumberBadges();
+}
+
+function updateStageNumberBadges() {
+  [...stagesElement.querySelectorAll('.stage-row')].forEach((row, index) => {
+    row.querySelectorAll('.stage-number').forEach((badge, fieldIndex) => {
+      badge.textContent = String(11 + index * 2 + fieldIndex).padStart(2, '0');
+    });
+  });
 }
 
 function populateForm(config) {
@@ -184,21 +193,47 @@ function renderAgeSelect(config) {
   ageSelect.value = selectedAge;
 }
 
-function renderDetails(result) {
+function renderDetails(config, result) {
   const year = result.years.find((item) => item.age === selectedAge);
   if (!year) return;
   setText('#detail-title', `${year.age}歳の収支・金融資産`);
   setText('#detail-period', `${year.age}〜${year.age + 1}歳`);
   const grid = document.querySelector('#detail-grid');
   grid.replaceChildren();
-  const makeItem = (label, value, emphasis = false) => {
+  const activeStageIndex = config.spendingStages
+    .map((stage, index) => ({ stage, index }))
+    .filter(({ stage }) => stage.age <= year.age)
+    .sort((a, b) => a.stage.age - b.stage.age)
+    .at(-1)?.index;
+  const spendingReferences = activeStageIndex === undefined
+    ? [5, 10]
+    : [5, 11 + activeStageIndex * 2, 12 + activeStageIndex * 2];
+  const operatingReferences = [5, 6, 7, 8, 9, ...spendingReferences.slice(1)];
+  const makeItem = (label, value, references = [], emphasis = false) => {
     const cell = document.createElement('div');
     cell.className = `detail-item formula-item${emphasis ? ' detail-item-emphasis' : ''}`;
+    const labelLine = document.createElement('div');
+    labelLine.className = 'detail-label-line';
     const name = document.createElement('span');
+    name.className = 'detail-label';
     name.textContent = label;
+    labelLine.append(name);
+    if (references.length) {
+      const referenceList = document.createElement('span');
+      referenceList.className = 'reference-list';
+      referenceList.setAttribute('aria-label', `参照する試算条件 ${references.map((number) => String(number).padStart(2, '0')).join('、')}`);
+      for (const number of references) {
+        const badge = document.createElement('span');
+        badge.className = 'reference-number';
+        badge.setAttribute('aria-hidden', 'true');
+        badge.textContent = String(number).padStart(2, '0');
+        referenceList.append(badge);
+      }
+      labelLine.append(referenceList);
+    }
     const amount = document.createElement('strong');
     amount.textContent = formatMan(value);
-    cell.append(name, amount);
+    cell.append(labelLine, amount);
     return cell;
   };
   const addFormula = (items) => {
@@ -212,21 +247,21 @@ function renderDetails(result) {
         operator.setAttribute('aria-label', item.operator === '+' ? '足す' : item.operator === '−' ? '引く' : '等しい');
         row.append(operator);
       }
-      row.append(makeItem(item.label, item.value, item.emphasis));
+      row.append(makeItem(item.label, item.value, item.references, item.emphasis));
     });
     grid.append(row);
   };
   addFormula([
-    { label: '年間の労働収入', value: year.salary },
-    { label: '年間の年金収入', value: year.pension, operator: '+' },
-    { label: '年間の支出', value: year.spending, operator: '−' },
+    { label: '年間の労働収入', value: year.salary, references: [6, 7] },
+    { label: '年間の年金収入', value: year.pension, operator: '+', references: [8, 9] },
+    { label: '年間の支出', value: year.spending, operator: '−', references: spendingReferences },
     { label: '年間の収支差額', value: year.salary + year.pension - year.spending, operator: '=' },
   ]);
   addFormula([
-    { label: '年初の金融資産', value: year.openingBalance },
-    { label: '金融資産の運用損益', value: year.investmentGain, operator: '+' },
-    { label: '金融資産への積立', value: year.deposit, operator: '+' },
-    { label: '金融資産の取崩し', value: year.withdrawal, operator: '−' },
+    { label: '年初の金融資産', value: year.openingBalance, references: [3] },
+    { label: '金融資産の運用損益', value: year.investmentGain, operator: '+', references: [3, 4] },
+    { label: '金融資産への積立', value: year.deposit, operator: '+', references: operatingReferences },
+    { label: '金融資産の取崩し', value: year.withdrawal, operator: '−', references: operatingReferences },
     { label: '年末の金融資産残高', value: year.closingBalance, operator: '=', emphasis: true },
   ]);
 }
@@ -236,7 +271,7 @@ function selectAge(age) {
   selectedAge = age;
   ageSelect.value = age;
   renderChart(latestConfig, latestResult);
-  renderDetails(latestResult);
+  renderDetails(latestConfig, latestResult);
 }
 
 function previewAge(age) {
@@ -245,7 +280,7 @@ function previewAge(age) {
   ageSelect.value = age;
   const marker = chart.querySelector('#selected-mark');
   if (marker) marker.innerHTML = selectedMarkMarkup(latestConfig, latestResult, age);
-  renderDetails(latestResult);
+  renderDetails(latestConfig, latestResult);
 }
 
 function update() {
@@ -262,7 +297,7 @@ function update() {
     renderMetrics(result);
     renderAgeSelect(config);
     renderChart(config, result);
-    renderDetails(result);
+    renderDetails(config, result);
     saveConfig(config);
   } catch (error) {
     if (errorElement) {
@@ -361,6 +396,7 @@ stagesElement.addEventListener('click', (event) => {
   const button = event.target.closest('.remove-stage');
   if (!button) return;
   button.closest('.stage-row').remove();
+  updateStageNumberBadges();
   update();
 });
 ageSelect.addEventListener('change', () => selectAge(Number(ageSelect.value)));
