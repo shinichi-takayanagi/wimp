@@ -7,12 +7,9 @@ const closeToYen = (actual, expected, label) => {
   assert.ok(Math.abs(actual - expected) < 0.01, `${label}: expected ${expected}円, got ${actual}円`);
 };
 
-// 月次ループとは独立した等比数列の和で、1年間の生活費を求める。
-function expectedAnnualSpending(monthlyBase, annualInflation) {
-  if (annualInflation === 0) return monthlyBase * 12;
-  const annualFactor = 1 + annualInflation / 100;
-  const monthlyFactor = annualFactor ** (1 / 12);
-  return monthlyBase * (annualFactor - 1) / (monthlyFactor - 1);
+// 年齢ごとの1年間は月額を一定に保ち、年初に年率インフレを反映する。
+function expectedAnnualSpending(monthlyBase, annualInflation = 0, elapsedYears = 0) {
+  return monthlyBase * 12 * (1 + annualInflation / 100) ** elapsedYears;
 }
 
 test('初期条件に年利・インフレ率・給与・支出・年金の設定を反映する', () => {
@@ -108,7 +105,7 @@ test('年利を月利に変換した12か月の運用結果が一致する', () 
   assert.ok(Math.abs(result.endingBalance - 1120000) < 0.001);
 });
 
-test('物価上昇率は生活費に月次で適用される', () => {
+test('年率インフレは翌年の初月から反映される', () => {
   const result = simulate(config({
     currentAge: 45,
     endAge: 47,
@@ -120,6 +117,27 @@ test('物価上昇率は生活費に月次で適用される', () => {
     baseMonthlySpending: 10000,
   }));
   assert.ok(Math.abs(result.months[12].spending - 11200) < 0.001);
+});
+
+test('45歳の初年度支出は月額80万円を12か月分で集計する', () => {
+  const result = simulate(config({
+    currentAge: 45,
+    endAge: 46,
+    startingAssets: 190000000,
+    annualReturn: 5,
+    annualInflation: 2,
+    monthlySalary: 50000,
+    retirementAge: 60,
+    pensionStartAge: 65,
+    monthlyPension: 100000,
+    baseMonthlySpending: 800000,
+    spendingStages: [{ age: 65, monthlySpending: 500000 }],
+  }));
+  closeToYen(result.years[0].spending, 9600000, '45歳の年間支出');
+  assert.ok(result.years[0].investmentGain > 9290000 && result.years[0].investmentGain < 9300000);
+  closeToYen(result.years[0].closingBalance,
+    result.years[0].openingBalance + result.years[0].investmentGain - 9000000,
+    '45歳末の金融資産');
 });
 
 test('同じ年齢の支出切替を拒否する', () => {
@@ -140,7 +158,7 @@ for (const inflation of [false, true]) {
           const salaryYear = salary ? 40000 * 12 : 0;
           const pensionYear = pension ? 30000 * 12 : 0;
           const spendingYear64 = expectedAnnualSpending(100000, annualInflation);
-          const spendingYear65 = expectedAnnualSpending(secondYearBase, annualInflation) * (1 + annualInflation / 100);
+          const spendingYear65 = expectedAnnualSpending(secondYearBase, annualInflation, 1);
           const withdrawalYear64 = spendingYear64 - salaryYear;
           const withdrawalYear65 = spendingYear65 - pensionYear;
           const expectedWithdrawal = withdrawalYear64 + withdrawalYear65;
@@ -236,19 +254,21 @@ test('運用益と毎月の取崩しを組み合わせても終了時資産が�
   assert.equal(result.firstShortfall, null);
 });
 
-test('資産ゼロで収入と生活費が同額でも、翌月のインフレによる不足を検知する', () => {
+test('年率インフレは翌年から反映し、生活費を年ごとに増額する', () => {
   const result = simulate(config({
     currentAge: 45,
-    endAge: 46,
+    endAge: 47,
     startingAssets: 0,
     annualInflation: 12,
     monthlySalary: 100000,
     monthlyPension: 0,
     baseMonthlySpending: 100000,
   }));
-  assert.deepEqual(result.firstShortfall, { age: 45, monthOfAge: 1, elapsedMonth: 2 });
+  assert.deepEqual(result.firstShortfall, { age: 46, monthOfAge: 0, elapsedMonth: 13 });
   assert.equal(result.cumulativeWithdrawal, 0);
-  closeToYen(result.cumulativeShortfall, expectedAnnualSpending(100000, 12) - 1200000, 'インフレによる累計不足');
+  closeToYen(result.years[0].spending, 1200000, '45歳の生活費');
+  closeToYen(result.years[1].spending, 1344000, '46歳の生活費');
+  closeToYen(result.cumulativeShortfall, 144000, 'インフレによる累計不足');
 });
 
 test('年金開始後の余剰分は積み立てられ、開始前の不足額は残る', () => {
