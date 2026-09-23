@@ -32,11 +32,11 @@ export function validateConfig(config) {
     throw new Error('試算終了時の年齢は、現在の年齢より大きい値にしてください。');
   }
   number('startingAssets', 0, 1e12, '現在の金融資産');
-  number('annualReturn', -99, 100, '想定利回り');
-  number('annualInflation', -20, 50, 'インフレ率');
+  number('annualReturn', -99, 100, '年率の想定利回り');
+  number('annualInflation', -20, 50, '年率のインフレ率');
   number('monthlySalary', 0, 1e10, '毎月の労働収入');
-  integer('retirementAge', 18, 110, '収入終了時の年齢');
-  integer('pensionStartAge', 60, 75, '年金の受給開始年齢');
+  integer('retirementAge', 18, 110, '労働収入の終了年齢');
+  integer('pensionStartAge', 60, 75, '年金受給開始年齢');
   number('monthlyPension', 0, 1e10, '毎月の年金収入');
   number('baseMonthlySpending', 0, 1e10, '毎月の支出');
 
