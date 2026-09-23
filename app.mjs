@@ -220,7 +220,7 @@ function renderAgeSelect(config) {
 function renderDetails(config, result) {
   const year = result.years.find((item) => item.age === selectedAge);
   if (!year) return;
-  setText('#detail-title', `${year.age}歳の収支・金融資産`);
+  setText('#detail-title', `${year.age}歳の内訳`);
   setText('#detail-period', `${year.age}〜${year.age + 1}歳`);
   const grid = document.querySelector('#detail-grid');
   grid.replaceChildren();
@@ -244,15 +244,16 @@ function renderDetails(config, result) {
     labelLine.append(name);
     if (references.length) {
       const referenceList = document.createElement('span');
-      referenceList.className = 'reference-list';
-      referenceList.setAttribute('aria-label', `参照する試算条件 ${references.map((number) => String(number).padStart(2, '0')).join('、')}`);
+      referenceList.className = 'reference-inline';
+      referenceList.setAttribute('aria-label', `条件 ${references.map((number) => String(number).padStart(2, '0')).join('、')}`);
+      referenceList.append('（');
       for (const number of references) {
-        const badge = document.createElement('span');
-        badge.className = 'reference-number';
-        badge.setAttribute('aria-hidden', 'true');
-        badge.textContent = String(number).padStart(2, '0');
-        referenceList.append(badge);
+        if (referenceList.childNodes.length > 1) referenceList.append('、');
+        const reference = document.createElement('strong');
+        reference.textContent = String(number).padStart(2, '0');
+        referenceList.append(reference);
       }
+      referenceList.append('）');
       labelLine.append(referenceList);
     }
     const amount = document.createElement('strong');
@@ -260,7 +261,7 @@ function renderDetails(config, result) {
     cell.append(labelLine, amount);
     return cell;
   };
-  const addFormula = (items) => {
+  const addFormula = (container, items) => {
     const row = document.createElement('div');
     row.className = 'formula-row';
     items.forEach((item, index) => {
@@ -273,20 +274,41 @@ function renderDetails(config, result) {
       }
       row.append(makeItem(item.label, item.value, item.references, item.emphasis));
     });
-    grid.append(row);
+    container.append(row);
   };
-  addFormula([
-    { label: '年間の労働収入', value: year.salary, references: [6, 7] },
-    { label: '年間の年金収入', value: year.pension, operator: '+', references: [8, 9] },
-    { label: '年間の支出', value: year.spending, operator: '−', references: spendingReferences },
-    { label: '年間の収支差額', value: year.salary + year.pension - year.spending, operator: '=' },
+  const addSubpanel = (title, formulas) => {
+    const subpanel = document.createElement('section');
+    subpanel.className = 'detail-subpanel';
+    const heading = document.createElement('h4');
+    heading.textContent = title;
+    subpanel.append(heading);
+    for (const formula of formulas) addFormula(subpanel, formula);
+    grid.append(subpanel);
+  };
+  addSubpanel('収支', [
+    [
+      { label: '労働収入', value: year.salary, references: [6, 7] },
+      { label: '年金収入', value: year.pension, operator: '+', references: [8, 9] },
+      { label: '収入合計', value: year.salary + year.pension, operator: '=' },
+    ],
+    [
+      { label: '収入合計', value: year.salary + year.pension },
+      { label: '支出', value: year.spending, operator: '−', references: spendingReferences },
+      { label: '収支差額', value: year.salary + year.pension - year.spending, operator: '=' },
+    ],
   ]);
-  addFormula([
-    { label: '年初の金融資産', value: year.openingBalance, references: [3] },
-    { label: '金融資産の運用損益', value: year.investmentGain, operator: '+', references: [3, 4] },
-    { label: '金融資産への積立', value: year.deposit, operator: '+', references: operatingReferences },
-    { label: '金融資産の取崩し', value: year.withdrawal, operator: '−', references: operatingReferences },
-    { label: '年末の金融資産残高', value: year.closingBalance, operator: '=', emphasis: true },
+  addSubpanel('資産', [
+    [
+      { label: '年初残高', value: year.openingBalance, references: [3] },
+      { label: '運用損益', value: year.investmentGain, operator: '+', references: [3, 4] },
+      { label: '運用後残高', value: year.openingBalance + year.investmentGain, operator: '=' },
+    ],
+    [
+      { label: '運用後残高', value: year.openingBalance + year.investmentGain },
+      { label: '積立', value: year.deposit, operator: '+', references: operatingReferences },
+      { label: '取崩し', value: year.withdrawal, operator: '−', references: operatingReferences },
+      { label: '年末残高', value: year.closingBalance, operator: '=', emphasis: true },
+    ],
   ]);
 }
 
