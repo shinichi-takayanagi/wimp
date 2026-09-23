@@ -27,11 +27,11 @@ function addStageRow(stage) {
   row.className = 'stage-row';
   const ageLabel = document.createElement('label');
   ageLabel.className = 'stage-field';
-  ageLabel.innerHTML = '<span class="input-wrap"><input class="stage-age" type="number" min="18" max="110" step="1" inputmode="numeric" required aria-label="支出変化の年齢"><span class="unit">歳</span></span>';
+  ageLabel.innerHTML = '<span class="input-wrap"><input class="stage-age" type="number" min="18" max="110" step="1" inputmode="numeric" required aria-label="支出変化時の年齢"><span class="unit">歳</span></span>';
   ageLabel.querySelector('input').value = stage.age;
   const spendingLabel = document.createElement('label');
   spendingLabel.className = 'stage-field';
-  spendingLabel.innerHTML = '<span class="input-wrap"><span class="field-number stage-number" aria-hidden="true"></span><input class="stage-spending" type="number" min="0" step="0.1" inputmode="decimal" required aria-label="切替後の毎月の支出"><span class="unit">万円</span></span>';
+  spendingLabel.innerHTML = '<span class="input-wrap"><span class="field-number stage-number" aria-hidden="true"></span><input class="stage-spending" type="number" min="0" step="0.1" inputmode="decimal" required aria-label="支出変化後の毎月の支出"><span class="unit">万円</span></span>';
   spendingLabel.querySelector('input').value = toMan(stage.monthlySpending);
   const remove = document.createElement('button');
   remove.className = 'remove-stage';
@@ -297,13 +297,12 @@ function renderDetails(config, result) {
     { label: '労働収入', value: year.salary, references: [1] },
     { label: '年金収入', value: year.pension, operator: '+', references: [2] },
     { label: '支出', value: year.spending, operator: '−', references: spendingReferences },
-    { label: '収支差額', value: year.salary + year.pension - year.spending, operator: '=' },
+    { label: '収支差額', value: year.salary + year.pension - year.spending, operator: '=', references: operatingReferences },
   ]]);
   addSubpanel('資産', [[
     { label: '年初残高', value: year.openingBalance },
     { label: '運用損益', value: year.investmentGain, operator: '+' },
-    { label: '積立', value: year.deposit, operator: '+', references: operatingReferences },
-    { label: '取崩し', value: year.withdrawal, operator: '−', references: operatingReferences },
+    { label: '収支差額', value: year.deposit - year.withdrawal, operator: '+', references: operatingReferences },
     { label: '年末残高', value: year.closingBalance, operator: '=', emphasis: true },
   ]]);
 }
@@ -425,7 +424,7 @@ document.querySelector('#add-stage').addEventListener('click', () => {
   const nextAge = candidates.find((age) => age >= preferredAge) ?? candidates.at(-1);
   if (nextAge === undefined) {
     if (errorElement) {
-      errorElement.textContent = '追加できる年齢がありません。登録済みの支出変化の年齢を変更してください。';
+      errorElement.textContent = '追加できる年齢がありません。登録済みの支出変化時の年齢を変更してください。';
       errorElement.hidden = false;
     }
     return;
