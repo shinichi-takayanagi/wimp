@@ -1,32 +1,35 @@
 # WIMP
 
-毎月の支出、労働収入、年金収入、想定利回りを使って、月ごとの金融資産残高を試算するウェブアプリです。外部ライブラリやサーバー側の処理は使いません。
+[![Test and deploy](https://github.com/shinichi-takayanagi/wimp/actions/workflows/pages.yml/badge.svg)](https://github.com/shinichi-takayanagi/wimp/actions/workflows/pages.yml)
+![JavaScript](https://img.shields.io/badge/JavaScript-ES%20modules-f1e05a)
 
-## 起動
+WIMP is a browser-based tool for projecting monthly financial asset balances from spending, employment income, pension income, and an assumed investment return. It uses no external libraries or server-side processing.
 
-このディレクトリで次を実行し、`http://localhost:8000` を開きます。
+## Run locally
+
+Run the following command in this directory, then open <http://localhost:8000>.
 
 ```sh
 python3 -m http.server 8000
 ```
 
-静的ファイルを公開できるホスティングにも、そのまま配置できます。
+The app can also be deployed as-is to any static file host.
 
-## 公開
+## Deployment
 
-GitHub Actions は `main` への push 時に試算テストを実行し、成功した場合だけ GitHub Pages に公開します。`main` 向けのプルリクエストでも同じテストを実行します。公開対象は `index.html`、`styles.css`、`app.mjs`、`engine.mjs` です。
+On each push to `main`, GitHub Actions runs the simulation tests and deploys to GitHub Pages only if they pass. The same tests run for pull requests targeting `main`. The published site consists of `index.html`, `styles.css`, `app.mjs`, and `engine.mjs`.
 
-公開 URL: https://shinichi-takayanagi.github.io/wimp/
+Live site: <https://shinichi-takayanagi.github.io/wimp/>
 
-## 試算の前提
+## Projection assumptions
 
-- 毎月、月初の金融資産に対する運用損益を計算し、労働収入と年金収入を加え、支出を差し引きます。
-- 収入が支出を上回る場合は差額を金融資産に積み立て、不足する場合は金融資産を取り崩します。金融資産を使い切った後の不足分も集計します。
-- 想定利回りとインフレ率は、それぞれ複利の月率に換算します。支出の切替は、設定した年齢になった月から適用します。
-- 年金は、指定した受給開始年齢から毎月定額で受け取るものとして計算します。実際の振込周期、税金、社会保険料、繰上げ・繰下げによる受給額の変更は計算しません。入力額には手取りの見込額を使ってください。
-- 試算条件はブラウザ内に自動保存されます。月次データはCSV、グラフはPNGでダウンロードできます。
+- Each month, the simulation calculates investment gains or losses on the assets at the start of the month, adds employment and pension income, and subtracts spending.
+- When income exceeds spending, the difference is added to financial assets. When spending exceeds income, assets are withdrawn. Any remaining deficit after assets are depleted is also recorded.
+- The assumed investment return and inflation rate are converted to compounded monthly rates. A spending change takes effect in the month the specified age is reached.
+- Pension is modeled as a fixed monthly amount starting at the specified claiming age. The simulation does not model actual payment frequency, taxes, social insurance premiums, or benefit changes from early or delayed claiming. Enter estimated take-home amounts.
+- Projection settings are saved automatically in the browser. Monthly data can be downloaded as CSV, and the chart as PNG.
 
-## テスト
+## Tests
 
 ```sh
 node --test engine.test.mjs
