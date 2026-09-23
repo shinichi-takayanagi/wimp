@@ -220,14 +220,14 @@ function renderDetails(result) {
     { label: '年間の労働収入', value: year.salary },
     { label: '年間の年金収入', value: year.pension, operator: '+' },
     { label: '年間の支出', value: year.spending, operator: '−' },
-    { label: '年間の収支', value: year.salary + year.pension - year.spending, operator: '=' },
+    { label: '年間の収支差額', value: year.salary + year.pension - year.spending, operator: '=' },
   ]);
   addFormula([
     { label: '年初の金融資産', value: year.openingBalance },
     { label: '金融資産の運用損益', value: year.investmentGain, operator: '+' },
     { label: '金融資産への積立', value: year.deposit, operator: '+' },
     { label: '金融資産の取崩し', value: year.withdrawal, operator: '−' },
-    { label: '年末の金融資産', value: year.closingBalance, operator: '=', emphasis: true },
+    { label: '年末の金融資産残高', value: year.closingBalance, operator: '=', emphasis: true },
   ]);
 }
 
