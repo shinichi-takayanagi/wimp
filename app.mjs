@@ -175,17 +175,21 @@ function renderChart(config, result) {
   const flowMax = niceMaximum(flowMaximum * 1.05);
   const flowY = (value) => bottom - ((value - flowMin) / (flowMax - flowMin)) * (bottom - top);
   const flowSeries = [
-    { key: 'income', className: 'income-line' },
-    { key: 'spending', className: 'spending-line' },
-    { key: 'assetChange', className: 'asset-change-line' },
+    { key: 'income', className: 'income-bar' },
+    { key: 'spending', className: 'spending-bar' },
+    { key: 'assetChange', className: 'asset-change-bar' },
   ];
-  const flowPaths = flowSeries.map(({ key, className }) => {
-    const path = annualFlows.map((year, index) => `${index ? 'L' : 'M'}${x(year.age + 0.5).toFixed(2)} ${flowY(year[key]).toFixed(2)}`).join(' ');
-    return `<path d="${path}" class="${className}"/>`;
-  }).join('');
-  const flowDots = flowSeries.map(({ key, className }) => annualFlows.map((year) =>
-    `<circle class="${className}-dot" cx="${x(year.age + 0.5)}" cy="${flowY(year[key])}" r="2.1"/>`
-  ).join('')).join('');
+  const clusterWidth = Math.min(10, ((right - left) / annualFlows.length) * 0.78);
+  const barGap = Math.min(1, clusterWidth * 0.08);
+  const barWidth = (clusterWidth - barGap * 2) / 3;
+  const zeroY = flowY(0);
+  const flowBars = annualFlows.map((year) => flowSeries.map(({ key, className }, seriesIndex) => {
+    const valueY = flowY(year[key]);
+    const barHeight = Math.max(1, Math.abs(zeroY - valueY));
+    const barX = x(year.age + 0.5) - clusterWidth / 2 + seriesIndex * (barWidth + barGap);
+    const barY = Math.min(zeroY, valueY);
+    return `<rect class="${className}" x="${barX.toFixed(2)}" y="${barY.toFixed(2)}" width="${barWidth.toFixed(2)}" height="${barHeight.toFixed(2)}" rx=".8"/>`;
+  }).join('')).join('');
   const grids = Array.from({ length: 5 }, (_, index) => {
     const value = yMax * index / 4;
     const flowValue = flowMin + (flowMax - flowMin) * index / 4;
@@ -203,7 +207,7 @@ function renderChart(config, result) {
   const hitPoints = annualFlows.map((year) =>
     `<circle class="chart-hit" data-age="${year.age}" cx="${x(year.age + 0.5)}" cy="${flowY(year.income)}" r="10"><title>${year.age}〜${year.age + 1}歳：収入 ${formatMan(year.income)}、支出 ${formatMan(year.spending)}、資産増減 ${formatMan(year.assetChange)}、年末残高 ${formatMan(year.closingBalance)}</title></circle>`
   ).join('');
-  chart.innerHTML = `<title id="chart-title">年齢ごとの金融資産残高と年間収支</title><desc id="chart-desc">${config.currentAge}歳から${config.endAge}歳までを表示します。左軸は金融資産残高、右軸は年ごとの収入、支出、資産増減です。資産増減には運用損益を含みます。</desc><defs><linearGradient id="asset-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#93c59c" stop-opacity=".42"/><stop offset="100%" stop-color="#93c59c" stop-opacity=".02"/></linearGradient></defs>${grids}${pensionMarker}<path d="${area}" fill="url(#asset-fill)"/><path d="${balanceLine}" class="balance-line"/>${flowPaths}${flowDots}${hitPoints}<g id="selected-mark">${selectedMarkMarkup(config, result, selectedAge)}</g><line x1="${left}" y1="${bottom}" x2="${right}" y2="${bottom}" class="axis-line"/><line x1="${right}" y1="${top}" x2="${right}" y2="${bottom}" class="axis-line"/>${ticks}<text x="${left}" y="18" class="axis-title">万円</text><text x="${right + 6}" y="14" class="axis-title">万円／年</text>`;
+  chart.innerHTML = `<title id="chart-title">年齢ごとの金融資産残高と年間収支</title><desc id="chart-desc">${config.currentAge}歳から${config.endAge}歳までを表示します。左軸は金融資産残高の折れ線、右軸は年ごとの収入、支出、資産増減の棒グラフです。資産増減には運用損益を含みます。</desc><defs><linearGradient id="asset-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#93c59c" stop-opacity=".42"/><stop offset="100%" stop-color="#93c59c" stop-opacity=".02"/></linearGradient></defs>${grids}${pensionMarker}<path d="${area}" fill="url(#asset-fill)"/>${flowBars}<path d="${balanceLine}" class="balance-line"/>${hitPoints}<g id="selected-mark">${selectedMarkMarkup(config, result, selectedAge)}</g><line x1="${left}" y1="${bottom}" x2="${right}" y2="${bottom}" class="axis-line"/><line x1="${right}" y1="${top}" x2="${right}" y2="${bottom}" class="axis-line"/>${ticks}<text x="${left}" y="18" class="axis-title">万円</text><text x="${right + 6}" y="14" class="axis-title">万円／年</text>`;
 }
 
 function renderAgeSelect(config) {
@@ -385,10 +389,10 @@ async function exportPng() {
   clone.setAttribute('width', '920');
   clone.setAttribute('height', '276');
   const styles = document.createElementNS('http://www.w3.org/2000/svg', 'style');
-  styles.textContent = '.grid-line{stroke:#dce6df;stroke-width:1}.axis-line,.tick-line{stroke:#aabbb2;stroke-width:1}.axis-label,.axis-title{fill:#66776c;font:13px sans-serif}.event-line{stroke:#b1c8b6;stroke-dasharray:5 5}.event-label{fill:#577762;font:12px sans-serif}.selected-line{stroke:#647a69;stroke-dasharray:4 4}.selected-dot{fill:#fff;stroke:#17694d;stroke-width:3}.balance-line{fill:none;stroke:#17694d;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}.income-line,.spending-line,.asset-change-line{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.income-line{stroke:#3c82ad}.spending-line{stroke:#ca8840}.asset-change-line{stroke:#8963a5}.income-line-dot{fill:#3c82ad}.spending-line-dot{fill:#ca8840}.asset-change-line-dot{fill:#8963a5}.chart-hit{fill:transparent}';
+  styles.textContent = '.grid-line{stroke:#dce6df;stroke-width:1}.axis-line,.tick-line{stroke:#aabbb2;stroke-width:1}.axis-label,.axis-title{fill:#66776c;font:13px sans-serif}.event-line{stroke:#b1c8b6;stroke-dasharray:5 5}.event-label{fill:#577762;font:12px sans-serif}.selected-line{stroke:#647a69;stroke-dasharray:4 4}.selected-dot{fill:#fff;stroke:#17694d;stroke-width:3}.balance-line{fill:none;stroke:#17694d;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}.income-bar{fill:#3c82ad;fill-opacity:.84}.spending-bar{fill:#ca8840;fill-opacity:.84}.asset-change-bar{fill:#8963a5;fill-opacity:.84}.chart-hit{fill:transparent}';
   clone.insertBefore(styles, clone.firstChild);
   const legend = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-  legend.innerHTML = '<line x1="100" y1="263" x2="116" y2="263" stroke="#17694d" stroke-width="4"/><text x="122" y="267" fill="#466656" font-size="11" font-family="sans-serif">金融資産残高</text><line x1="260" y1="263" x2="276" y2="263" stroke="#3c82ad" stroke-width="3"/><text x="282" y="267" fill="#466656" font-size="11" font-family="sans-serif">収入</text><line x1="350" y1="263" x2="366" y2="263" stroke="#ca8840" stroke-width="3"/><text x="372" y="267" fill="#466656" font-size="11" font-family="sans-serif">支出</text><line x1="440" y1="263" x2="456" y2="263" stroke="#8963a5" stroke-width="3"/><text x="462" y="267" fill="#466656" font-size="11" font-family="sans-serif">資産増減</text>';
+  legend.innerHTML = '<line x1="100" y1="263" x2="116" y2="263" stroke="#17694d" stroke-width="4"/><text x="122" y="267" fill="#466656" font-size="11" font-family="sans-serif">金融資産残高</text><rect x="260" y="259" width="8" height="8" rx="2" fill="#3c82ad"/><text x="274" y="267" fill="#466656" font-size="11" font-family="sans-serif">収入</text><rect x="340" y="259" width="8" height="8" rx="2" fill="#ca8840"/><text x="354" y="267" fill="#466656" font-size="11" font-family="sans-serif">支出</text><rect x="420" y="259" width="8" height="8" rx="2" fill="#8963a5"/><text x="434" y="267" fill="#466656" font-size="11" font-family="sans-serif">資産増減</text>';
   clone.append(legend);
   const svgBlob = new Blob([new XMLSerializer().serializeToString(clone)], { type: 'image/svg+xml;charset=utf-8' });
   const url = URL.createObjectURL(svgBlob);
