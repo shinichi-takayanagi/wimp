@@ -1,7 +1,8 @@
 import { DEFAULT_CONFIG, simulate, validateConfig } from './engine.mjs';
 
-const STORAGE_KEY = 'wimp:config:v3';
-const LEGACY_STORAGE_KEY = 'wimp:config:v2';
+const STORAGE_KEY = 'wimp:config:v4';
+const LEGACY_STORAGE_KEY = 'wimp:config:v3';
+const OLDER_STORAGE_KEY = 'wimp:config:v2';
 const form = document.querySelector('#simulation-form');
 const stagesElement = document.querySelector('#spending-stages');
 const salaryStagesElement = document.querySelector('#salary-stages');
@@ -52,7 +53,7 @@ function addSalaryStageRow(stage) {
   row.className = 'stage-row';
   const ageLabel = document.createElement('label');
   ageLabel.className = 'stage-field';
-  ageLabel.innerHTML = '<span class="input-wrap"><input class="salary-stage-age" type="number" min="18" max="110" step="1" inputmode="numeric" required aria-label="労働収入変化時の年齢"><span class="unit">歳</span></span>';
+  ageLabel.innerHTML = '<span class="input-wrap"><span class="field-number stage-number" aria-hidden="true"></span><input class="salary-stage-age" type="number" min="18" max="110" step="1" inputmode="numeric" required aria-label="労働収入変化時の年齢"><span class="unit">歳</span></span>';
   ageLabel.querySelector('input').value = stage.age;
   const salaryLabel = document.createElement('label');
   salaryLabel.className = 'stage-field';
@@ -65,11 +66,15 @@ function addSalaryStageRow(stage) {
   remove.textContent = '×';
   row.append(ageLabel, salaryLabel, remove);
   salaryStagesElement.append(row);
+  updateStageNumberBadges();
 }
 
 function updateStageNumberBadges() {
-  [...stagesElement.querySelectorAll('.stage-row')].forEach((row, index) => {
+  [...salaryStagesElement.querySelectorAll('.stage-row')].forEach((row, index) => {
     row.querySelector('.stage-number').textContent = String(6 + index);
+  });
+  [...stagesElement.querySelectorAll('.stage-row')].forEach((row, index) => {
+    row.querySelector('.stage-number').textContent = String(6 + salaryStagesElement.querySelectorAll('.stage-row').length + index);
   });
 }
 
@@ -118,9 +123,9 @@ function initialConfig() {
       validateConfig(parsed);
       return parsed;
     }
-    const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+    const legacy = localStorage.getItem(LEGACY_STORAGE_KEY) ?? localStorage.getItem(OLDER_STORAGE_KEY);
     if (legacy) {
-      const migrated = applyNewDefaultsToPreviousDefaults(JSON.parse(legacy));
+      const migrated = applyNewDefaultsToPreviousDefaults(JSON.parse(legacy), true);
       if (migrated.annualReturn === 0) migrated.annualReturn = DEFAULT_CONFIG.annualReturn;
       if (migrated.annualInflation === 0) migrated.annualInflation = DEFAULT_CONFIG.annualInflation;
       if (migrated.monthlyPension === 80000) migrated.monthlyPension = DEFAULT_CONFIG.monthlyPension;
@@ -131,8 +136,11 @@ function initialConfig() {
   return DEFAULT_CONFIG;
 }
 
-function applyNewDefaultsToPreviousDefaults(config) {
-  config.salaryStages ??= [];
+function applyNewDefaultsToPreviousDefaults(config, migrateSalaryStages = false) {
+  config.salaryStages ??= DEFAULT_CONFIG.salaryStages.map((stage) => ({ ...stage }));
+  if (migrateSalaryStages && config.salaryStages.length === 0) {
+    config.salaryStages = DEFAULT_CONFIG.salaryStages.map((stage) => ({ ...stage }));
+  }
   const previousStages = [
     { age: 60, monthlySpending: 150000 },
     { age: 65, monthlySpending: 120000 },
@@ -305,7 +313,15 @@ function renderDetails(config, result, rebuild = false) {
     .filter(({ stage }) => stage.age <= year.age)
     .sort((a, b) => a.stage.age - b.stage.age)
     .at(-1)?.index;
-  const spendingReferences = [activeStageIndex === undefined ? 4 : 6 + activeStageIndex];
+  const activeSalaryStageIndex = config.salaryStages
+    .map((stage, index) => ({ stage, index }))
+    .filter(({ stage }) => stage.age <= year.age)
+    .sort((a, b) => a.stage.age - b.stage.age)
+    .at(-1)?.index;
+  const spendingReferences = [activeStageIndex === undefined
+    ? 4
+    : 6 + config.salaryStages.length + activeStageIndex];
+  const salaryReferences = [activeSalaryStageIndex === undefined ? 1 : 6 + activeSalaryStageIndex];
   const balanceFlow = year.investmentGain + year.deposit - year.withdrawal;
   if (rebuild || !detailElements) {
     grid.replaceChildren();
@@ -370,7 +386,7 @@ function renderDetails(config, result, rebuild = false) {
     const incomeItems = document.createElement('div');
     incomeItems.className = 'formula-group-content income-range';
     incomeGroup.append(incomeLabel, incomeItems);
-    const salary = makeItem('労働収入', [1]);
+    const salary = makeItem('労働収入', salaryReferences);
     const pension = makeItem('年金収入', [2]);
     const investmentGain = makeItem('資産運用損益', [3]);
     incomeItems.append(salary.cell);
@@ -417,7 +433,7 @@ function renderDetails(config, result, rebuild = false) {
       salary, pension, investmentGain, spending, balanceFlowItem,
       openingBalance, assetBalanceFlow, closingBalance,
     };
-    setReferences(salary, [1]);
+    setReferences(salary, salaryReferences);
     setReferences(pension, [2]);
     setReferences(investmentGain, [3]);
     setReferences(spending, spendingReferences);
@@ -442,6 +458,17 @@ function renderDetails(config, result, rebuild = false) {
       reference.className = 'field-number';
       reference.textContent = String(number);
       spendingReference.append(reference);
+    }
+  }
+  const salaryReference = detailElements.salary.referenceList;
+  if (salaryReference && salaryReference.textContent !== salaryReferences.join('')) {
+    salaryReference.replaceChildren();
+    salaryReference.setAttribute('aria-label', `条件 ${salaryReferences.join('、')}`);
+    for (const number of salaryReferences) {
+      const reference = document.createElement('span');
+      reference.className = 'field-number';
+      reference.textContent = String(number);
+      salaryReference.append(reference);
     }
   }
 }
@@ -589,6 +616,7 @@ document.querySelector('#add-salary-stage').addEventListener('click', () => {
   }
   const lastSalary = salaryStagesElement.lastElementChild?.querySelector('.salary-stage-amount')?.value;
   addSalaryStageRow({ age: nextAge, monthlySalary: (Number(lastSalary) || Number(form.elements.monthlySalary.value) || 0) * 10000 });
+  updateStageNumberBadges();
   update();
 });
 function removeStageOnClick(container) {
