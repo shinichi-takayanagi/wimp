@@ -229,7 +229,7 @@ function renderChart(config, result) {
 
 function renderAgeSelect(config) {
   ageSelect.replaceChildren();
-  for (let age = config.currentAge; age < config.endAge; age += 1) {
+  for (let age = config.currentAge; age <= config.endAge; age += 1) {
     const option = document.createElement('option');
     option.value = age;
     option.textContent = `${age}歳`;
@@ -239,6 +239,34 @@ function renderAgeSelect(config) {
 }
 
 function renderDetails(config, result, rebuild = false) {
+  if (selectedAge === config.endAge) {
+    const grid = document.querySelector('#detail-grid');
+    grid.replaceChildren();
+    detailElements = null;
+    setText('#detail-title', '時点での内訳');
+    document.querySelector('#detail-title')?.setAttribute('aria-label', `${config.endAge}歳時点での内訳`);
+    const panel = document.createElement('section');
+    panel.className = 'detail-subpanel';
+    const heading = document.createElement('h4');
+    heading.textContent = '資産';
+    const row = document.createElement('div');
+    row.className = 'formula-row';
+    const item = document.createElement('div');
+    item.className = 'detail-item formula-item detail-item-emphasis';
+    const label = document.createElement('div');
+    label.className = 'detail-label-line';
+    const labelText = document.createElement('span');
+    labelText.className = 'detail-label';
+    labelText.textContent = '終了時残高';
+    const amount = document.createElement('strong');
+    amount.textContent = formatMan(result.endingBalance);
+    label.append(labelText);
+    item.append(label, amount);
+    row.append(item);
+    panel.append(heading, row);
+    grid.append(panel);
+    return;
+  }
   const year = result.years.find((item) => item.age === selectedAge);
   if (!year) return;
   setText('#detail-title', '時点での内訳');
@@ -391,7 +419,7 @@ function renderDetails(config, result, rebuild = false) {
 }
 
 function selectAge(age) {
-  if (!latestConfig || !latestResult || !Number.isInteger(age) || age < latestConfig.currentAge || age >= latestConfig.endAge) return;
+  if (!latestConfig || !latestResult || !Number.isInteger(age) || age < latestConfig.currentAge || age > latestConfig.endAge) return;
   selectedAge = age;
   ageSelect.value = age;
   renderChart(latestConfig, latestResult);
@@ -399,7 +427,7 @@ function selectAge(age) {
 }
 
 function previewAge(age) {
-  if (!latestConfig || !latestResult || !Number.isInteger(age) || age < latestConfig.currentAge || age >= latestConfig.endAge || age === selectedAge) return;
+  if (!latestConfig || !latestResult || !Number.isInteger(age) || age < latestConfig.currentAge || age > latestConfig.endAge || age === selectedAge) return;
   selectedAge = age;
   ageSelect.value = age;
   const marker = chart.querySelector('#selected-mark');
@@ -413,7 +441,7 @@ function update() {
     const result = simulate(config);
     latestConfig = config;
     latestResult = result;
-    if (selectedAge === null || selectedAge < config.currentAge || selectedAge >= config.endAge) {
+    if (selectedAge === null || selectedAge < config.currentAge || selectedAge > config.endAge) {
       selectedAge = Math.min(config.endAge - 1, Math.max(config.currentAge, 65));
     }
     errorElement.hidden = true;
@@ -533,7 +561,7 @@ function chartAgeAtPointer(event) {
   const plotEnd = 822;
   if (svgX < plotStart || svgX > plotEnd) return null;
   const progress = (svgX - plotStart) / (plotEnd - plotStart);
-  return Math.min(latestConfig.endAge - 1,
+  return Math.min(latestConfig.endAge,
     latestConfig.currentAge + Math.floor(progress * (latestConfig.endAge - latestConfig.currentAge)));
 }
 
