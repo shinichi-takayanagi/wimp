@@ -13,6 +13,9 @@ const moneyFormatter = new Intl.NumberFormat('ja-JP', { maximumFractionDigits: 0
 let latestConfig = null;
 let latestResult = null;
 let selectedAge = null;
+let pendingPreviewAge = null;
+let previewFrame = null;
+let detailElements = null;
 
 const toMan = (yen) => yen / 10000;
 const formatMan = (yen) => `${moneyFormatter.format(toMan(yen))}万円`;
@@ -110,6 +113,8 @@ function applyNewDefaultsToPreviousDefaults(config) {
   const earlierSingleStage = [{ age: 60, monthlySpending: 150000 }];
   if (config.monthlySalary === 100000) config.monthlySalary = DEFAULT_CONFIG.monthlySalary;
   if (config.baseMonthlySpending === 200000) config.baseMonthlySpending = DEFAULT_CONFIG.baseMonthlySpending;
+  if (config.endAge === 100) config.endAge = DEFAULT_CONFIG.endAge;
+  if (config.startingAssets === 30000000) config.startingAssets = DEFAULT_CONFIG.startingAssets;
   if ([previousStages, earlierSingleStage].some((stages) =>
     JSON.stringify(config.spendingStages) === JSON.stringify(stages))) {
     config.spendingStages = DEFAULT_CONFIG.spendingStages.map((stage) => ({ ...stage }));
@@ -130,9 +135,6 @@ function setText(selector, text) {
 
 function renderMetrics(result) {
   setText('#ending-balance', formatMan(result.endingBalance));
-  setText('#shortfall-age', result.firstShortfall
-    ? `${result.firstShortfall.age}歳${result.firstShortfall.monthOfAge}か月`
-    : '不足なし');
 }
 
 function niceMaximum(value) {
@@ -157,26 +159,38 @@ function flowScale(result, top, bottom) {
   return { annualFlows, flowMin, flowMax, flowY, zeroY: flowY(0) };
 }
 
+function balanceScale(result, top, bottom, zeroY) {
+  const balances = result.points.map((point) => point.balance);
+  const minimum = Math.min(0, ...balances);
+  const maximum = Math.max(0, ...balances);
+  const negativeRange = minimum < 0 ? niceMaximum(Math.abs(minimum) * 1.05) : 0;
+  const positiveRange = maximum > 0 ? niceMaximum(maximum * 1.05) : 0;
+  const y = (value) => value >= 0
+    ? (positiveRange ? zeroY - (value / positiveRange) * (zeroY - top) : zeroY)
+    : (negativeRange ? zeroY + (Math.abs(value) / negativeRange) * (bottom - zeroY) : zeroY);
+  const valueAtY = (position) => position <= zeroY
+    ? (positiveRange ? ((zeroY - position) / (zeroY - top)) * positiveRange : 0)
+    : (negativeRange ? -((position - zeroY) / (bottom - zeroY)) * negativeRange : 0);
+  return { y, valueAtY };
+}
+
 function selectedMarkMarkup(config, result, age) {
   const left = 76, right = 822, top = 22, bottom = 212;
-  const maxValue = Math.max(...result.points.map((point) => point.balance));
-  const yMax = niceMaximum(maxValue * 1.05);
   const { zeroY } = flowScale(result, top, bottom);
+  const { y: balanceY } = balanceScale(result, top, bottom, zeroY);
   const x = left + ((age - config.currentAge) / (config.endAge - config.currentAge)) * (right - left);
   const point = result.points.find((item) => item.age === age);
   if (!point) return '';
-  const y = zeroY - (Math.max(0, point.balance) / yMax) * (zeroY - top);
+  const y = balanceY(point.balance);
   return `<line x1="${x}" y1="${top}" x2="${x}" y2="${bottom}" class="selected-line"/><circle cx="${x}" cy="${y}" r="7" class="selected-dot"/>`;
 }
 
 function renderChart(config, result) {
   const left = 76, right = 822, top = 22, bottom = 212;
-  const maxValue = Math.max(...result.points.map((point) => point.balance));
-  const yMax = niceMaximum(maxValue * 1.05);
   const { annualFlows, flowMin, flowMax, flowY, zeroY } = flowScale(result, top, bottom);
+  const { y: balanceY, valueAtY: balanceValueAtY } = balanceScale(result, top, bottom, zeroY);
   const x = (age) => left + ((age - config.currentAge) / (config.endAge - config.currentAge)) * (right - left);
-  const y = (value) => zeroY - (Math.max(0, value) / yMax) * (zeroY - top);
-  const balanceLine = result.points.map((point, index) => `${index ? 'L' : 'M'}${x(point.age).toFixed(2)} ${y(point.balance).toFixed(2)}`).join(' ');
+  const balanceLine = result.points.map((point, index) => `${index ? 'L' : 'M'}${x(point.age).toFixed(2)} ${balanceY(point.balance).toFixed(2)}`).join(' ');
   const area = `${balanceLine} L${right} ${zeroY} L${left} ${zeroY} Z`;
   const flowSeries = [
     { key: 'income', className: 'income-bar' },
@@ -193,10 +207,10 @@ function renderChart(config, result) {
     const barY = Math.min(zeroY, valueY);
     return `<rect class="${className}" x="${barX.toFixed(2)}" y="${barY.toFixed(2)}" width="${barWidth.toFixed(2)}" height="${barHeight.toFixed(2)}" rx=".8"/>`;
   }).join('')).join('');
-  const grids = Array.from({ length: 5 }, (_, index) => {
-    const value = yMax * index / 4;
-    const gridY = y(value);
-    return `<line x1="${left}" y1="${gridY}" x2="${right}" y2="${gridY}" class="${index === 0 ? 'zero-grid-line' : 'grid-line'}"/><text x="${left - 12}" y="${gridY + 4}" text-anchor="end" class="axis-label">${moneyFormatter.format(toMan(value))}</text>`;
+  const balanceTicks = [top, (top + zeroY) / 2, zeroY, (zeroY + bottom) / 2, bottom];
+  const grids = balanceTicks.map((gridY, index) => {
+    const value = balanceValueAtY(gridY);
+    return `<line x1="${left}" y1="${gridY}" x2="${right}" y2="${gridY}" class="${index === 2 ? 'zero-grid-line' : 'grid-line'}"/><text x="${left - 12}" y="${gridY + 4}" text-anchor="end" class="axis-label">${moneyFormatter.format(toMan(value))}</text>`;
   }).join('');
   const flowTicks = [...new Set([flowMin, 0, flowMax])].map((value) => {
     const tickY = flowY(value);
@@ -210,10 +224,7 @@ function renderChart(config, result) {
   const pensionMarker = config.pensionStartAge > config.currentAge && config.pensionStartAge < config.endAge
     ? `<line x1="${x(config.pensionStartAge)}" y1="${top}" x2="${x(config.pensionStartAge)}" y2="${bottom}" class="event-line"/><text x="${x(config.pensionStartAge) + 6}" y="${top + 13}" class="event-label">年金の受給開始</text>`
     : '';
-  const hitPoints = annualFlows.map((year) =>
-    `<circle class="chart-hit" data-age="${year.age}" cx="${x(year.age + 0.5)}" cy="${flowY(year.income)}" r="10"><title>${year.age}〜${year.age + 1}歳：収入 ${formatMan(year.income)}、支出 ${formatMan(year.spending)}、資産増減 ${formatMan(year.assetChange)}、年末残高 ${formatMan(year.closingBalance)}</title></circle>`
-  ).join('');
-  chart.innerHTML = `<title id="chart-title">年齢ごとの金融資産残高と年間収支</title><desc id="chart-desc">${config.currentAge}歳から${config.endAge}歳までを表示します。左軸は金融資産残高の折れ線、右軸は年ごとの収入、支出、資産増減の棒グラフです。両軸のゼロは同じ高さです。資産増減には運用損益を含みます。</desc><defs><linearGradient id="asset-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#93c59c" stop-opacity=".42"/><stop offset="100%" stop-color="#93c59c" stop-opacity=".02"/></linearGradient></defs>${grids}${flowTicks}${pensionMarker}<path d="${area}" fill="url(#asset-fill)"/>${flowBars}<path d="${balanceLine}" class="balance-line"/>${hitPoints}<g id="selected-mark">${selectedMarkMarkup(config, result, selectedAge)}</g><line x1="${left}" y1="${bottom}" x2="${right}" y2="${bottom}" class="axis-line"/><line x1="${right}" y1="${top}" x2="${right}" y2="${bottom}" class="axis-line"/>${ticks}<text x="${left}" y="18" class="axis-title">万円</text><text x="${right + 6}" y="14" class="axis-title">万円／年</text>`;
+  chart.innerHTML = `<title id="chart-title">年齢ごとの資産残高と年間収支</title><desc id="chart-desc">${config.currentAge}歳から${config.endAge}歳までを表示します。左軸に資産残高、右軸に年ごとの収入、支出、収支を表示します。両軸のゼロは同じ高さです。</desc><defs><linearGradient id="asset-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#93c59c" stop-opacity=".42"/><stop offset="100%" stop-color="#93c59c" stop-opacity=".02"/></linearGradient></defs>${grids}${flowTicks}${pensionMarker}<path d="${area}" fill="url(#asset-fill)"/>${flowBars}<path d="${balanceLine}" class="balance-line"/><g id="selected-mark">${selectedMarkMarkup(config, result, selectedAge)}</g><line x1="${left}" y1="${bottom}" x2="${right}" y2="${bottom}" class="axis-line"/><line x1="${right}" y1="${top}" x2="${right}" y2="${bottom}" class="axis-line"/>${ticks}<text x="${left}" y="18" class="axis-title">万円</text><text x="${right + 6}" y="14" class="axis-title">万円／年</text><rect class="chart-hover-surface" x="${left}" y="${top}" width="${right - left}" height="${bottom - top}" aria-hidden="true"/>`;
 }
 
 function renderAgeSelect(config) {
@@ -227,94 +238,155 @@ function renderAgeSelect(config) {
   ageSelect.value = selectedAge;
 }
 
-function renderDetails(config, result) {
+function renderDetails(config, result, rebuild = false) {
   const year = result.years.find((item) => item.age === selectedAge);
   if (!year) return;
-  setText('#detail-title', `${year.age}歳の内訳`);
-  setText('#detail-period', `${year.age}〜${year.age + 1}歳`);
+  setText('#detail-title', '時点での内訳');
+  document.querySelector('#detail-title')?.setAttribute('aria-label', `${year.age}歳時点での内訳`);
   const grid = document.querySelector('#detail-grid');
-  grid.replaceChildren();
   const activeStageIndex = config.spendingStages
     .map((stage, index) => ({ stage, index }))
     .filter(({ stage }) => stage.age <= year.age)
     .sort((a, b) => a.stage.age - b.stage.age)
     .at(-1)?.index;
   const spendingReferences = [activeStageIndex === undefined ? 3 : 5 + activeStageIndex];
-  const operatingGain = year.investmentGain;
   const balanceFlow = year.investmentGain + year.deposit - year.withdrawal;
-  const makeItem = (label, value, references = [], emphasis = false) => {
-    const cell = document.createElement('div');
-    cell.className = `detail-item formula-item${emphasis ? ' detail-item-emphasis' : ''}`;
-    const labelLine = document.createElement('div');
-    labelLine.className = 'detail-label-line';
-    const name = document.createElement('span');
-    name.className = 'detail-label';
-    name.textContent = label;
-    labelLine.append(name);
-    if (references.length) {
-      const referenceList = document.createElement('span');
-      referenceList.className = 'reference-inline';
-      referenceList.setAttribute('aria-label', `条件 ${references.join('、')}`);
-      referenceList.append('（');
+  if (rebuild || !detailElements) {
+    grid.replaceChildren();
+    const makeItem = (label, references = [], emphasis = false) => {
+      const cell = document.createElement('div');
+      cell.className = `detail-item formula-item${emphasis ? ' detail-item-emphasis' : ''}`;
+      const labelLine = document.createElement('div');
+      labelLine.className = 'detail-label-line';
+      const name = document.createElement('span');
+      name.className = 'detail-label';
+      name.textContent = label;
+      labelLine.append(name);
+      let referenceList = null;
+      if (references.length) {
+        referenceList = document.createElement('span');
+        referenceList.className = 'reference-inline';
+        labelLine.append(referenceList);
+      }
+      const amount = document.createElement('strong');
+      cell.append(labelLine, amount);
+      return { cell, amount, referenceList };
+    };
+    const addOperator = (container, symbol) => {
+      const operator = document.createElement('span');
+      operator.className = 'equation-operator';
+      operator.textContent = symbol;
+      operator.setAttribute('aria-label', symbol === '+' ? '足す' : symbol === '−' ? '引く' : '等しい');
+      container.append(operator);
+    };
+    const makeSubpanel = (title) => {
+      const subpanel = document.createElement('section');
+      subpanel.className = 'detail-subpanel';
+      const heading = document.createElement('h4');
+      heading.textContent = title;
+      subpanel.append(heading);
+      grid.append(subpanel);
+      return subpanel;
+    };
+    const setReferences = (item, references) => {
+      if (!item.referenceList) return;
+      item.referenceList.setAttribute('aria-label', `条件 ${references.join('、')}`);
       for (const number of references) {
-        if (referenceList.childNodes.length > 1) referenceList.append('、');
-        const reference = document.createElement('strong');
+        const reference = document.createElement('span');
+        reference.className = 'field-number';
         reference.textContent = String(number);
-        referenceList.append(reference);
+        item.referenceList.append(reference);
       }
-      referenceList.append('）');
-      labelLine.append(referenceList);
-    }
-    const amount = document.createElement('strong');
-    amount.textContent = formatMan(value);
-    cell.append(labelLine, amount);
-    return cell;
-  };
-  const addFormula = (container, items) => {
-    const row = document.createElement('div');
-    row.className = 'formula-row';
-    items.forEach((item, index) => {
-      if (index > 0) {
-        const operator = document.createElement('span');
-        operator.className = 'equation-operator';
-        operator.textContent = item.operator;
-        operator.setAttribute('aria-label', item.operator === '+' ? '足す' : item.operator === '−' ? '引く' : '等しい');
-        row.append(operator);
-      }
-      row.append(makeItem(item.label, item.value, item.references, item.emphasis));
-    });
-    container.append(row);
-  };
-  const addSubpanel = (title, formulas) => {
-    const subpanel = document.createElement('section');
-    subpanel.className = 'detail-subpanel';
-    const heading = document.createElement('h4');
-    heading.textContent = title;
-    subpanel.append(heading);
-    for (const formula of formulas) addFormula(subpanel, formula);
-    grid.append(subpanel);
-  };
-  const incomeAndReturn = year.salary + year.pension + operatingGain;
-  const incomeFormula = [
-    { label: '労働収入', value: year.salary, references: [1] },
-    { label: '年金収入', value: year.pension, operator: '+', references: [2] },
-    { label: '運用損益', value: operatingGain, operator: '+' },
-    { label: '収入・運用益計', value: incomeAndReturn, operator: '=' },
-  ];
-  const cashflowFormula = [
-    { label: '収入・運用益計', value: incomeAndReturn },
-    { label: '支出', value: year.spending, operator: '−', references: spendingReferences },
-  ];
-  if (year.shortfall > 0.005) {
-    cashflowFormula.push({ label: '不足額', value: year.shortfall, operator: '+' });
+    };
+
+    const cashflowRow = document.createElement('div');
+    cashflowRow.className = 'formula-row cashflow-row';
+    const incomeGroup = document.createElement('div');
+    incomeGroup.className = 'formula-group formula-group-income';
+    const incomeLabel = document.createElement('span');
+    incomeLabel.className = 'formula-group-title';
+    const incomeBadge = document.createElement('span');
+    incomeBadge.className = 'section-icon';
+    incomeBadge.textContent = 'B';
+    const incomeText = document.createElement('span');
+    incomeText.textContent = '収入';
+    incomeLabel.append(incomeBadge, incomeText);
+    const incomeItems = document.createElement('div');
+    incomeItems.className = 'formula-group-content income-range';
+    incomeGroup.append(incomeLabel, incomeItems);
+    const salary = makeItem('労働収入', [1]);
+    const pension = makeItem('年金収入', [2]);
+    const investmentGain = makeItem('資産運用損益');
+    incomeItems.append(salary.cell);
+    addOperator(incomeItems, '+');
+    incomeItems.append(pension.cell);
+    addOperator(incomeItems, '+');
+    incomeItems.append(investmentGain.cell);
+    cashflowRow.append(incomeGroup);
+
+    addOperator(cashflowRow, '−');
+    const expenseGroup = document.createElement('div');
+    expenseGroup.className = 'formula-group formula-group-expense';
+    const expenseLabel = document.createElement('span');
+    expenseLabel.className = 'formula-group-title';
+    const expenseBadge = document.createElement('span');
+    expenseBadge.className = 'section-icon';
+    expenseBadge.textContent = 'C';
+    const expenseText = document.createElement('span');
+    expenseText.textContent = '支出';
+    expenseLabel.append(expenseBadge, expenseText);
+    const spending = makeItem('支出', spendingReferences);
+    const spendingItems = document.createElement('div');
+    spendingItems.className = 'formula-group-content expense-range';
+    spendingItems.append(spending.cell);
+    expenseGroup.append(expenseLabel, spendingItems);
+    cashflowRow.append(expenseGroup);
+    addOperator(cashflowRow, '=');
+    const balanceFlowItem = makeItem('収支', [4]);
+    cashflowRow.append(balanceFlowItem.cell);
+    makeSubpanel('収支').append(cashflowRow);
+
+    const assetRow = document.createElement('div');
+    assetRow.className = 'formula-row';
+    const openingBalance = makeItem('年初残高');
+    const closingBalance = makeItem('年末残高', [], true);
+    const assetBalanceFlow = makeItem('収支', [4]);
+    assetRow.append(openingBalance.cell);
+    addOperator(assetRow, '+');
+    assetRow.append(assetBalanceFlow.cell);
+    addOperator(assetRow, '=');
+    assetRow.append(closingBalance.cell);
+    makeSubpanel('資産').append(assetRow);
+    detailElements = {
+      salary, pension, investmentGain, spending, balanceFlowItem,
+      openingBalance, assetBalanceFlow, closingBalance,
+    };
+    setReferences(salary, [1]);
+    setReferences(pension, [2]);
+    setReferences(spending, spendingReferences);
+    setReferences(balanceFlowItem, [4]);
+    setReferences(assetBalanceFlow, [4]);
   }
-  cashflowFormula.push({ label: '収支', value: balanceFlow, operator: '=', references: [4] });
-  addSubpanel('収支', [incomeFormula, cashflowFormula]);
-  addSubpanel('資産', [[
-    { label: '年初残高', value: year.openingBalance },
-    { label: '収支', value: balanceFlow, operator: '+', references: [4] },
-    { label: '年末残高', value: year.closingBalance, operator: '=', emphasis: true },
-  ]]);
+  const setAmount = (item, value) => { item.amount.textContent = formatMan(value); };
+  setAmount(detailElements.salary, year.salary);
+  setAmount(detailElements.pension, year.pension);
+  setAmount(detailElements.investmentGain, year.investmentGain);
+  setAmount(detailElements.spending, year.spending);
+  setAmount(detailElements.balanceFlowItem, balanceFlow);
+  setAmount(detailElements.openingBalance, year.openingBalance);
+  setAmount(detailElements.assetBalanceFlow, balanceFlow);
+  setAmount(detailElements.closingBalance, year.closingBalance);
+  const spendingReference = detailElements.spending.referenceList;
+  if (spendingReference && spendingReference.textContent !== spendingReferences.join('')) {
+    spendingReference.replaceChildren();
+    spendingReference.setAttribute('aria-label', `条件 ${spendingReferences.join('、')}`);
+    for (const number of spendingReferences) {
+      const reference = document.createElement('span');
+      reference.className = 'field-number';
+      reference.textContent = String(number);
+      spendingReference.append(reference);
+    }
+  }
 }
 
 function selectAge(age) {
@@ -348,7 +420,7 @@ function update() {
     renderMetrics(result);
     renderAgeSelect(config);
     renderChart(config, result);
-    renderDetails(config, result);
+    renderDetails(config, result, true);
     saveConfig(config);
   } catch (error) {
     if (errorElement) {
@@ -373,11 +445,11 @@ function downloadBlob(blob, filename) {
 
 function exportCsv() {
   if (!latestResult) return;
-  const headers = ['経過月', '年齢', '年齢内経過月', '月初の金融資産_円', '労働収入_円', '年金収入_円', '毎月の支出_円', '金融資産の運用損益_円', '金融資産への積立_円', '金融資産の取崩し_円', '不足額_円', '月末の金融資産_円'];
+  const headers = ['経過月', '年齢', '年齢内経過月', '月初資産残高_円', '労働収入_円', '年金収入_円', '支出_円', '資産運用損益_円', '資産への積立_円', '資産の取崩し_円', '月末資産残高_円'];
   const rows = latestResult.months.map((month) => [
     month.elapsedMonth, month.age, month.monthOfAge + 1,
     month.openingBalance, month.salary, month.pension, month.spending,
-    month.investmentGain, month.deposit, month.withdrawal, month.shortfall, month.closingBalance,
+    month.investmentGain, month.deposit, month.withdrawal, month.closingBalance,
   ].map((value) => Math.round(value)).join(','));
   const csv = `\ufeff${[headers.join(','), ...rows].join('\r\n')}\r\n`;
   downloadBlob(new Blob([csv], { type: 'text/csv;charset=utf-8' }), 'wimp-monthly-projection.csv');
@@ -393,7 +465,7 @@ async function exportPng() {
   styles.textContent = '.grid-line{stroke:#dce6df;stroke-width:1}.zero-grid-line{stroke:#b3c5ba;stroke-width:1.3}.axis-line,.tick-line{stroke:#aabbb2;stroke-width:1}.axis-label,.axis-title{fill:#66776c;font:13px sans-serif}.event-line{stroke:#b1c8b6;stroke-dasharray:5 5}.event-label{fill:#577762;font:12px sans-serif}.selected-line{stroke:#647a69;stroke-dasharray:4 4}.selected-dot{fill:#fff;stroke:#17694d;stroke-width:3}.balance-line{fill:none;stroke:#17694d;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}.income-bar{fill:#3c82ad;fill-opacity:.84}.spending-bar{fill:#ca8840;fill-opacity:.84}.asset-change-bar{fill:#8963a5;fill-opacity:.84}.chart-hit{fill:transparent}';
   clone.insertBefore(styles, clone.firstChild);
   const legend = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-  legend.innerHTML = '<line x1="100" y1="263" x2="116" y2="263" stroke="#17694d" stroke-width="4"/><text x="122" y="267" fill="#466656" font-size="11" font-family="sans-serif">金融資産残高</text><rect x="260" y="259" width="8" height="8" rx="2" fill="#3c82ad"/><text x="274" y="267" fill="#466656" font-size="11" font-family="sans-serif">収入</text><rect x="340" y="259" width="8" height="8" rx="2" fill="#ca8840"/><text x="354" y="267" fill="#466656" font-size="11" font-family="sans-serif">支出</text><rect x="420" y="259" width="8" height="8" rx="2" fill="#8963a5"/><text x="434" y="267" fill="#466656" font-size="11" font-family="sans-serif">資産増減</text>';
+  legend.innerHTML = '<line x1="100" y1="263" x2="116" y2="263" stroke="#17694d" stroke-width="4"/><text x="122" y="267" fill="#466656" font-size="11" font-family="sans-serif">資産残高</text><rect x="260" y="259" width="8" height="8" rx="2" fill="#3c82ad"/><text x="274" y="267" fill="#466656" font-size="11" font-family="sans-serif">収入</text><rect x="340" y="259" width="8" height="8" rx="2" fill="#ca8840"/><text x="354" y="267" fill="#466656" font-size="11" font-family="sans-serif">支出</text><rect x="420" y="259" width="8" height="8" rx="2" fill="#8963a5"/><text x="434" y="267" fill="#466656" font-size="11" font-family="sans-serif">収支</text>';
   clone.append(legend);
   const svgBlob = new Blob([new XMLSerializer().serializeToString(clone)], { type: 'image/svg+xml;charset=utf-8' });
   const url = URL.createObjectURL(svgBlob);
@@ -451,13 +523,45 @@ stagesElement.addEventListener('click', (event) => {
   update();
 });
 ageSelect.addEventListener('change', () => selectAge(Number(ageSelect.value)));
+function chartAgeAtPointer(event) {
+  if (!latestConfig) return null;
+  const bounds = chart.getBoundingClientRect();
+  if (bounds.width <= 0) return null;
+  const svgX = ((event.clientX - bounds.left) / bounds.width) * 920;
+  const plotStart = 76;
+  const plotEnd = 822;
+  if (svgX < plotStart || svgX > plotEnd) return null;
+  const progress = (svgX - plotStart) / (plotEnd - plotStart);
+  return Math.min(latestConfig.endAge - 1,
+    latestConfig.currentAge + Math.floor(progress * (latestConfig.endAge - latestConfig.currentAge)));
+}
+
 chart.addEventListener('click', (event) => {
-  const point = event.target.closest('.chart-hit');
-  if (point) selectAge(Number(point.dataset.age));
+  if (!event.target.closest('.chart-hover-surface')) return;
+  const age = chartAgeAtPointer(event);
+  if (age !== null) selectAge(age);
 });
 chart.addEventListener('pointermove', (event) => {
-  const point = event.target.closest('.chart-hit');
-  if (point) previewAge(Number(point.dataset.age));
+  if (!event.target.closest('.chart-hover-surface')) return;
+  const age = chartAgeAtPointer(event);
+  if (age === null) return;
+  if (age === selectedAge) {
+    pendingPreviewAge = null;
+    if (previewFrame !== null) {
+      cancelAnimationFrame(previewFrame);
+      previewFrame = null;
+    }
+    return;
+  }
+  if (age === pendingPreviewAge) return;
+  pendingPreviewAge = age;
+  if (previewFrame !== null) return;
+  previewFrame = requestAnimationFrame(() => {
+    const nextAge = pendingPreviewAge;
+    pendingPreviewAge = null;
+    previewFrame = null;
+    previewAge(nextAge);
+  });
 });
 document.querySelector('#download-csv').addEventListener('click', exportCsv);
 document.querySelector('#download-png').addEventListener('click', exportPng);

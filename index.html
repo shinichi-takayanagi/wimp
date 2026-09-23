@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#103e35" />
-    <meta name="description" content="毎月の支出、労働収入、年金収入、想定利回り（年率）から金融資産の推移を試算する資産寿命シミュレータ" />
+    <meta name="description" content="毎月の支出、労働収入、年金収入、想定利回り（年率）から資産残高の推移を試算するシミュレータ" />
     <title>WIMP | 資産寿命シミュレータ</title>
     <link rel="stylesheet" href="./styles.css" />
     <script type="module" src="./app.mjs"></script>
@@ -20,7 +20,7 @@
           </svg>
           <span class="brand-name">WIMP</span>
         </a>
-        <span class="header-caption"><strong>W</strong>ealth, <strong>I</strong>ncome &amp; <strong>M</strong>oney-flow <strong>P</strong>rojection <span lang="ja">（資産寿命シミュレータ）</span></span>
+        <span class="header-caption"><strong>W</strong>ealth, <strong>I</strong>ncome &amp; <strong>M</strong>oney-flow <strong>P</strong>rojection <span lang="ja"> | 資産寿命シミュレータ</span></span>
       </div>
     </header>
 
@@ -36,30 +36,28 @@
               <div class="form-section-title"><span class="section-icon">A</span><h3 id="basic-title">基本情報</h3></div>
               <div class="field-grid two-col">
                 <label class="field"><span class="field-label">現在の年齢</span><span class="input-wrap"><input name="currentAge" type="number" min="18" max="100" step="1" inputmode="numeric" required /><span class="unit">歳</span></span></label>
-                <label class="field"><span class="field-label">資産寿命シミュレーション終了時の年齢</span><span class="input-wrap"><input name="endAge" type="number" min="19" max="110" step="1" inputmode="numeric" required /><span class="unit">歳</span></span></label>
+                <label class="field"><span class="field-label">シミュレーション終了時の年齢</span><span class="input-wrap"><input name="endAge" type="number" min="19" max="110" step="1" inputmode="numeric" required /><span class="unit">歳</span></span></label>
               </div>
-              <div class="field-grid two-col">
-                <label class="field"><span class="field-label">現在の金融資産</span><span class="input-wrap"><input name="startingAssets" type="number" min="0" step="0.1" inputmode="decimal" required /><span class="unit">万円</span></span></label>
-                <label class="field"><span class="field-label">想定利回り（年率）</span><span class="input-wrap"><input name="annualReturn" type="number" min="-99" max="100" step="0.1" inputmode="decimal" required /><span class="unit">%</span></span></label>
-              </div>
-              <label class="field"><span class="field-label">インフレ率（年率）</span><span class="input-wrap"><input name="annualInflation" type="number" min="-20" max="50" step="0.1" inputmode="decimal" required /><span class="unit">%</span></span></label>
+              <label class="field"><span class="field-label">現在の資産</span><span class="input-wrap"><input name="startingAssets" type="number" min="0" step="0.1" inputmode="decimal" required /><span class="unit">万円</span></span></label>
             </section>
 
             <section class="form-section" aria-labelledby="income-title">
               <div class="form-section-title"><span class="section-icon">B</span><h3 id="income-title">収入</h3></div>
               <div class="field-grid two-col">
                 <label class="field"><span class="field-label"><span class="field-number" aria-hidden="true">1</span>毎月の労働収入</span><span class="input-wrap"><input name="monthlySalary" type="number" min="0" step="0.1" inputmode="decimal" required /><span class="unit">万円</span></span></label>
-                <label class="field"><span class="field-label">労働収入終了時の年齢</span><span class="input-wrap"><input name="retirementAge" type="number" min="18" max="110" step="1" inputmode="numeric" required /><span class="unit">歳</span></span></label>
+                <label class="field"><span class="field-label">労働終了時の年齢</span><span class="input-wrap"><input name="retirementAge" type="number" min="18" max="110" step="1" inputmode="numeric" required /><span class="unit">歳</span></span></label>
               </div>
               <div class="field-grid two-col">
                 <label class="field"><span class="field-label"><span class="field-number" aria-hidden="true">2</span>毎月の年金収入</span><span class="input-wrap"><input name="monthlyPension" type="number" min="0" step="0.1" inputmode="decimal" required /><span class="unit">万円</span></span></label>
                 <label class="field"><span class="field-label">年金受給開始時の年齢</span><span class="input-wrap"><input name="pensionStartAge" type="number" min="60" max="75" step="1" inputmode="numeric" required /><span class="unit">歳</span></span></label>
               </div>
+              <label class="field"><span class="field-label">資産の想定利回り（年率）</span><span class="input-wrap"><input name="annualReturn" type="number" min="-99" max="100" step="0.1" inputmode="decimal" required /><span class="unit">%</span></span></label>
             </section>
 
             <section class="form-section spending-section" aria-labelledby="spending-title">
               <div class="form-section-title"><span class="section-icon">C</span><h3 id="spending-title">支出</h3></div>
               <label class="field"><span class="field-label"><span class="field-number" aria-hidden="true">3</span>毎月の支出</span><span class="input-wrap"><input name="baseMonthlySpending" type="number" min="0" step="0.1" inputmode="decimal" required /><span class="unit">万円</span></span></label>
+              <label class="field"><span class="field-label">インフレ率（年率）</span><span class="input-wrap"><input name="annualInflation" type="number" min="-20" max="50" step="0.1" inputmode="decimal" required /><span class="unit">%</span></span></label>
               <div class="stage-head"><span>支出変化時の年齢</span><span>支出変化後の毎月の支出</span></div>
               <div id="spending-stages" class="stage-list"></div>
               <button id="add-stage" class="add-button" type="button"><span aria-hidden="true">＋</span> 支出の設定を追加</button>
@@ -73,23 +71,22 @@
             <div><span class="section-number">RESULTS</span><h2 id="results-title">資産寿命シミュレーション結果</h2></div>
           </div>
           <div class="metrics" aria-label="主な試算結果">
-            <article class="metric metric-primary"><span class="metric-label">試算終了時の金融資産</span><strong id="ending-balance">—</strong></article>
-            <article class="metric"><span class="metric-label">資産不足の発生時期</span><strong id="shortfall-age">—</strong></article>
+            <article class="metric metric-primary"><span class="metric-label">シミュレーション終了時の資産残高</span><strong id="ending-balance">—</strong></article>
           </div>
 
           <div class="chart-card">
               <div class="chart-header">
-                <div><h3>金融資産残高の推移</h3><p>残高（左軸）・年間収入／支出／資産増減（右軸、万円）<br>資産増減には運用損益を含みます。</p></div>
+                <div><h3>資産残高の推移</h3><p>資産残高（左軸）、収入/支出/収支（右軸）</p></div>
               <div class="chart-tools">
-                <div class="chart-legend"><span><i class="legend-green"></i> 金融資産残高</span><span><i class="legend-blue"></i> 収入</span><span><i class="legend-orange"></i> 支出</span><span><i class="legend-purple"></i> 資産増減</span></div>
+                <div class="chart-legend"><span><i class="legend-green"></i> 資産残高</span><span><i class="legend-blue"></i> 収入</span><span><i class="legend-orange"></i> 支出</span><span><i class="legend-purple"></i> 収支</span></div>
                 <div class="download-actions"><button id="download-csv" type="button" class="button button-primary">CSV ↓</button><button id="download-png" type="button" class="button button-secondary">PNG ↓</button></div>
               </div>
             </div>
-            <div class="chart-scroll"><svg id="projection-chart" viewBox="0 0 920 276" role="img" aria-labelledby="chart-title chart-desc"><title id="chart-title">年齢ごとの金融資産残高と年間収支</title><desc id="chart-desc">左軸に金融資産残高、右軸に年ごとの収入、支出、資産増減を表示します。</desc></svg></div>
+            <div class="chart-scroll"><svg id="projection-chart" viewBox="0 0 920 276" role="img" aria-labelledby="chart-title chart-desc"><title id="chart-title">年齢ごとの資産残高と年間収支</title><desc id="chart-desc">左軸に資産残高、右軸に年ごとの収入、支出、収支を表示します。残高はマイナスになる場合があります。</desc></svg></div>
             </div>
 
           <div class="detail-card">
-            <div class="detail-head"><div class="detail-title-group"><h3 id="detail-title">—</h3><span class="detail-period" id="detail-period">—</span></div><label class="age-picker"><select id="age-select" aria-label="年齢"></select></label></div>
+            <div class="detail-head"><div class="detail-title-group"><label class="age-picker"><select id="age-select" aria-label="内訳を表示する年齢"></select></label><h3 id="detail-title">時点での内訳</h3></div></div>
             <div class="detail-grid" id="detail-grid"></div>
           </div>
         </section>
