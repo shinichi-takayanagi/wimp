@@ -146,7 +146,7 @@ function niceMaximum(value) {
 }
 
 function selectedMarkMarkup(config, result, age) {
-  const left = 76, right = 884, top = 22, bottom = 212;
+  const left = 76, right = 822, top = 22, bottom = 212;
   const maxValue = Math.max(...result.points.map((point) => point.balance));
   const yMax = niceMaximum(maxValue * 1.05);
   const x = left + ((age - config.currentAge) / (config.endAge - config.currentAge)) * (right - left);
@@ -157,16 +157,40 @@ function selectedMarkMarkup(config, result, age) {
 }
 
 function renderChart(config, result) {
-  const left = 76, right = 884, top = 22, bottom = 212;
+  const left = 76, right = 822, top = 22, bottom = 212;
   const maxValue = Math.max(...result.points.map((point) => point.balance));
   const yMax = niceMaximum(maxValue * 1.05);
   const x = (age) => left + ((age - config.currentAge) / (config.endAge - config.currentAge)) * (right - left);
   const y = (value) => bottom - (Math.max(0, value) / yMax) * (bottom - top);
   const balanceLine = result.points.map((point, index) => `${index ? 'L' : 'M'}${x(point.age).toFixed(2)} ${y(point.balance).toFixed(2)}`).join(' ');
   const area = `${balanceLine} L${right} ${bottom} L${left} ${bottom} Z`;
+  const annualFlows = result.years.map((year) => ({
+    ...year,
+    income: year.salary + year.pension,
+    assetChange: year.closingBalance - year.openingBalance,
+  }));
+  const flowMinimum = Math.min(0, ...annualFlows.map((year) => year.assetChange));
+  const flowMaximum = Math.max(0, ...annualFlows.flatMap((year) => [year.income, year.spending, year.assetChange]));
+  const flowMin = flowMinimum < 0 ? -niceMaximum(Math.abs(flowMinimum) * 1.05) : 0;
+  const flowMax = niceMaximum(flowMaximum * 1.05);
+  const flowY = (value) => bottom - ((value - flowMin) / (flowMax - flowMin)) * (bottom - top);
+  const flowSeries = [
+    { key: 'income', className: 'income-line' },
+    { key: 'spending', className: 'spending-line' },
+    { key: 'assetChange', className: 'asset-change-line' },
+  ];
+  const flowPaths = flowSeries.map(({ key, className }) => {
+    const path = annualFlows.map((year, index) => `${index ? 'L' : 'M'}${x(year.age + 0.5).toFixed(2)} ${flowY(year[key]).toFixed(2)}`).join(' ');
+    return `<path d="${path}" class="${className}"/>`;
+  }).join('');
+  const flowDots = flowSeries.map(({ key, className }) => annualFlows.map((year) =>
+    `<circle class="${className}-dot" cx="${x(year.age + 0.5)}" cy="${flowY(year[key])}" r="2.1"/>`
+  ).join('')).join('');
   const grids = Array.from({ length: 5 }, (_, index) => {
     const value = yMax * index / 4;
-    return `<line x1="${left}" y1="${y(value)}" x2="${right}" y2="${y(value)}" class="grid-line"/><text x="${left - 12}" y="${y(value) + 4}" text-anchor="end" class="axis-label">${moneyFormatter.format(toMan(value))}</text>`;
+    const flowValue = flowMin + (flowMax - flowMin) * index / 4;
+    const gridY = y(value);
+    return `<line x1="${left}" y1="${gridY}" x2="${right}" y2="${gridY}" class="grid-line"/><line x1="${right - 4}" y1="${gridY}" x2="${right}" y2="${gridY}" class="tick-line"/><text x="${left - 12}" y="${gridY + 4}" text-anchor="end" class="axis-label">${moneyFormatter.format(toMan(value))}</text><text x="${right + 8}" y="${gridY + 4}" class="axis-label">${moneyFormatter.format(toMan(flowValue))}</text>`;
   }).join('');
   const tickAges = new Set([config.currentAge, config.endAge]);
   for (let age = Math.ceil(config.currentAge / 10) * 10; age < config.endAge; age += 10) tickAges.add(age);
@@ -176,10 +200,10 @@ function renderChart(config, result) {
   const pensionMarker = config.pensionStartAge > config.currentAge && config.pensionStartAge < config.endAge
     ? `<line x1="${x(config.pensionStartAge)}" y1="${top}" x2="${x(config.pensionStartAge)}" y2="${bottom}" class="event-line"/><text x="${x(config.pensionStartAge) + 6}" y="${top + 13}" class="event-label">年金の受給開始</text>`
     : '';
-  const hitPoints = result.points.slice(0, -1).map((point) =>
-    `<circle class="chart-hit" data-age="${point.age}" cx="${x(point.age)}" cy="${y(point.balance)}" r="11"><title>${point.age}歳時点の金融資産残高 ${formatMan(point.balance)}</title></circle>`
+  const hitPoints = annualFlows.map((year) =>
+    `<circle class="chart-hit" data-age="${year.age}" cx="${x(year.age + 0.5)}" cy="${flowY(year.income)}" r="10"><title>${year.age}〜${year.age + 1}歳：収入 ${formatMan(year.income)}、支出 ${formatMan(year.spending)}、資産増減 ${formatMan(year.assetChange)}、年末残高 ${formatMan(year.closingBalance)}</title></circle>`
   ).join('');
-  chart.innerHTML = `<title id="chart-title">年齢ごとの金融資産残高</title><desc id="chart-desc">${config.currentAge}歳から${config.endAge}歳までの金融資産残高を示します。</desc><defs><linearGradient id="asset-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#93c59c" stop-opacity=".42"/><stop offset="100%" stop-color="#93c59c" stop-opacity=".02"/></linearGradient></defs>${grids}${pensionMarker}<path d="${area}" fill="url(#asset-fill)"/><path d="${balanceLine}" class="balance-line"/>${hitPoints}<g id="selected-mark">${selectedMarkMarkup(config, result, selectedAge)}</g><line x1="${left}" y1="${bottom}" x2="${right}" y2="${bottom}" class="axis-line"/>${ticks}<text x="${left}" y="18" class="axis-title">万円</text>`;
+  chart.innerHTML = `<title id="chart-title">年齢ごとの金融資産残高と年間収支</title><desc id="chart-desc">${config.currentAge}歳から${config.endAge}歳までを表示します。左軸は金融資産残高、右軸は年ごとの収入、支出、資産増減です。資産増減には運用損益を含みます。</desc><defs><linearGradient id="asset-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#93c59c" stop-opacity=".42"/><stop offset="100%" stop-color="#93c59c" stop-opacity=".02"/></linearGradient></defs>${grids}${pensionMarker}<path d="${area}" fill="url(#asset-fill)"/><path d="${balanceLine}" class="balance-line"/>${flowPaths}${flowDots}${hitPoints}<g id="selected-mark">${selectedMarkMarkup(config, result, selectedAge)}</g><line x1="${left}" y1="${bottom}" x2="${right}" y2="${bottom}" class="axis-line"/><line x1="${right}" y1="${top}" x2="${right}" y2="${bottom}" class="axis-line"/>${ticks}<text x="${left}" y="18" class="axis-title">万円</text><text x="${right + 6}" y="14" class="axis-title">万円／年</text>`;
 }
 
 function renderAgeSelect(config) {
@@ -339,10 +363,10 @@ async function exportPng() {
   clone.setAttribute('width', '920');
   clone.setAttribute('height', '276');
   const styles = document.createElementNS('http://www.w3.org/2000/svg', 'style');
-  styles.textContent = '.grid-line{stroke:#dce6df;stroke-width:1}.axis-line,.tick-line{stroke:#aabbb2;stroke-width:1}.axis-label,.axis-title{fill:#66776c;font:13px sans-serif}.event-line{stroke:#b1c8b6;stroke-dasharray:5 5}.event-label{fill:#577762;font:12px sans-serif}.selected-line{stroke:#647a69;stroke-dasharray:4 4}.selected-dot{fill:#fff;stroke:#17694d;stroke-width:3}.balance-line{fill:none;stroke:#17694d;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}.chart-hit{fill:transparent}';
+  styles.textContent = '.grid-line{stroke:#dce6df;stroke-width:1}.axis-line,.tick-line{stroke:#aabbb2;stroke-width:1}.axis-label,.axis-title{fill:#66776c;font:13px sans-serif}.event-line{stroke:#b1c8b6;stroke-dasharray:5 5}.event-label{fill:#577762;font:12px sans-serif}.selected-line{stroke:#647a69;stroke-dasharray:4 4}.selected-dot{fill:#fff;stroke:#17694d;stroke-width:3}.balance-line{fill:none;stroke:#17694d;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}.income-line,.spending-line,.asset-change-line{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.income-line{stroke:#3c82ad}.spending-line{stroke:#ca8840}.asset-change-line{stroke:#8963a5}.income-line-dot{fill:#3c82ad}.spending-line-dot{fill:#ca8840}.asset-change-line-dot{fill:#8963a5}.chart-hit{fill:transparent}';
   clone.insertBefore(styles, clone.firstChild);
   const legend = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-  legend.innerHTML = '<line x1="720" y1="16" x2="745" y2="16" stroke="#17694d" stroke-width="4"/><text x1="751" y1="20" fill="#466656" font-size="12" font-family="sans-serif">金融資産残高</text>';
+  legend.innerHTML = '<line x1="100" y1="263" x2="116" y2="263" stroke="#17694d" stroke-width="4"/><text x="122" y="267" fill="#466656" font-size="11" font-family="sans-serif">金融資産残高</text><line x1="260" y1="263" x2="276" y2="263" stroke="#3c82ad" stroke-width="3"/><text x="282" y="267" fill="#466656" font-size="11" font-family="sans-serif">収入</text><line x1="350" y1="263" x2="366" y2="263" stroke="#ca8840" stroke-width="3"/><text x="372" y="267" fill="#466656" font-size="11" font-family="sans-serif">支出</text><line x1="440" y1="263" x2="456" y2="263" stroke="#8963a5" stroke-width="3"/><text x="462" y="267" fill="#466656" font-size="11" font-family="sans-serif">資産増減</text>';
   clone.append(legend);
   const svgBlob = new Blob([new XMLSerializer().serializeToString(clone)], { type: 'image/svg+xml;charset=utf-8' });
   const url = URL.createObjectURL(svgBlob);

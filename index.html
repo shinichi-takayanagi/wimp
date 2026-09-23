@@ -79,13 +79,13 @@
 
           <div class="chart-card">
               <div class="chart-header">
-                <div><h3>金融資産残高の推移</h3><p>年齢ごとの金融資産残高（万円）</p></div>
+                <div><h3>金融資産残高の推移</h3><p>残高（左軸）・年間収入／支出／資産増減（右軸、万円）<br>資産増減には運用損益を含みます。</p></div>
               <div class="chart-tools">
-                <div class="chart-legend"><span><i class="legend-green"></i> 金融資産残高</span></div>
+                <div class="chart-legend"><span><i class="legend-green"></i> 金融資産残高</span><span><i class="legend-blue"></i> 収入</span><span><i class="legend-orange"></i> 支出</span><span><i class="legend-purple"></i> 資産増減</span></div>
                 <div class="download-actions"><button id="download-csv" type="button" class="button button-primary">CSV ↓</button><button id="download-png" type="button" class="button button-secondary">PNG ↓</button></div>
               </div>
             </div>
-            <div class="chart-scroll"><svg id="projection-chart" viewBox="0 0 920 276" role="img" aria-labelledby="chart-title chart-desc"><title id="chart-title">年齢ごとの金融資産残高</title><desc id="chart-desc">現在の年齢から試算終了時の年齢までの金融資産残高を示します。</desc></svg></div>
+            <div class="chart-scroll"><svg id="projection-chart" viewBox="0 0 920 276" role="img" aria-labelledby="chart-title chart-desc"><title id="chart-title">年齢ごとの金融資産残高と年間収支</title><desc id="chart-desc">左軸に金融資産残高、右軸に年ごとの収入、支出、資産増減を表示します。</desc></svg></div>
             <div class="chart-footer"><span>年間の内訳を表示する年齢</span><label class="age-picker"><select id="age-select" aria-label="年間の内訳を表示する年齢"></select></label></div>
           </div>
 

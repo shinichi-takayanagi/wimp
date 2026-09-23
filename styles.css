@@ -71,6 +71,9 @@ a{color:inherit}
 .chart-legend{display:flex;gap:11px;color:#65796d;font-size:9px;font-weight:700;white-space:nowrap}
 .chart-legend i{display:inline-block;width:13px;height:3px;border-radius:3px;vertical-align:middle;margin-right:4px;position:relative;top:-1px}
 .legend-green{background:#17694d}
+.legend-blue{background:#3c82ad}
+.legend-orange{background:#ca8840}
+.legend-purple{background:#8963a5}
 .download-actions{display:flex;gap:5px}
 .button{border-radius:6px;padding:6px 9px;font-size:9px;font-weight:900;white-space:nowrap;border:1px solid transparent}
 .button-primary{background:#17694d;color:#fff}
@@ -88,6 +91,13 @@ a{color:inherit}
 .selected-line{stroke:#7a9b85;stroke-width:1.3;stroke-dasharray:4 4}
 .selected-dot{fill:#fff;stroke:#17694d;stroke-width:3}
 .balance-line{fill:none;stroke:#17694d;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
+.income-line,.spending-line,.asset-change-line{fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.income-line{stroke:#3c82ad}
+.spending-line{stroke:#ca8840}
+.asset-change-line{stroke:#8963a5}
+.income-line-dot{fill:#3c82ad}
+.spending-line-dot{fill:#ca8840}
+.asset-change-line-dot{fill:#8963a5}
 .chart-hit{fill:transparent;cursor:pointer}
 #selected-mark{pointer-events:none}
 .chart-hit:hover{fill:#17694d55}
