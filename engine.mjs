@@ -1,7 +1,7 @@
 export const DEFAULT_CONFIG = Object.freeze({
   currentAge: 45,
-  endAge: 100,
-  startingAssets: 30000000,
+  endAge: 80,
+  startingAssets: 15000000,
   annualReturn: 4,
   annualInflation: 2,
   monthlySalary: 350000,
@@ -31,9 +31,9 @@ export function validateConfig(config) {
   if (config.endAge <= config.currentAge) {
     throw new Error('試算終了時の年齢は、現在の年齢より大きい値にしてください。');
   }
-  number('startingAssets', 0, 1e12, '現在の金融資産');
-  number('annualReturn', -99, 100, '年率の想定利回り');
-  number('annualInflation', -20, 50, '年率のインフレ率');
+  number('startingAssets', 0, 1e12, '現在の資産');
+  number('annualReturn', -99, 100, '資産の想定利回り（年率）');
+  number('annualInflation', -20, 50, 'インフレ率（年率）');
   number('monthlySalary', 0, 1e10, '毎月の労働収入');
   integer('retirementAge', 18, 110, '労働収入の終了年齢');
   integer('pensionStartAge', 60, 75, '年金受給開始年齢');
@@ -62,7 +62,7 @@ export function simulate(config) {
   validateConfig(config);
   const stages = [...config.spendingStages].sort((a, b) => a.age - b.age);
   const monthlyReturn = Math.pow(1 + config.annualReturn / 100, 1 / 12) - 1;
-  const annualInflationFactor = 1 + config.annualInflation / 100;
+  const monthlyInflation = Math.pow(1 + config.annualInflation / 100, 1 / 12) - 1;
   const monthCount = (config.endAge - config.currentAge) * 12;
   const months = [];
   const years = [];
@@ -70,8 +70,6 @@ export function simulate(config) {
   let balance = config.startingAssets;
   let cumulativeWithdrawal = 0;
   let cumulativePension = 0;
-  let cumulativeShortfall = 0;
-  let firstShortfall = null;
   let activeStage = 0;
   let baseSpending = config.baseMonthlySpending;
 
@@ -86,21 +84,15 @@ export function simulate(config) {
     const openingBalance = balance;
     const salary = age < config.retirementAge ? config.monthlySalary : 0;
     const pension = age >= config.pensionStartAge ? config.monthlyPension : 0;
-    const spending = baseSpending * Math.pow(annualInflationFactor, Math.floor(index / 12));
-    const investmentGain = openingBalance * monthlyReturn;
-    const availableAssets = Math.max(0, openingBalance + investmentGain);
+    const spending = baseSpending * Math.pow(1 + monthlyInflation, index);
+    const investmentGain = openingBalance > 0 ? openingBalance * monthlyReturn : 0;
     const cashFlow = salary + pension - spending;
     const deposit = Math.max(0, cashFlow);
-    const withdrawal = Math.min(availableAssets, Math.max(0, -cashFlow));
-    const shortfall = Math.max(0, -cashFlow - withdrawal);
-    balance = availableAssets + deposit - withdrawal;
+    const withdrawal = Math.max(0, -cashFlow);
+    balance = openingBalance + investmentGain + deposit - withdrawal;
 
     cumulativeWithdrawal += withdrawal;
     cumulativePension += pension;
-    cumulativeShortfall += shortfall;
-    if (firstShortfall === null && shortfall > 0.005) {
-      firstShortfall = { age, monthOfAge, elapsedMonth: index + 1 };
-    }
 
     const month = {
       elapsedMonth: index + 1,
@@ -113,7 +105,6 @@ export function simulate(config) {
       investmentGain,
       deposit,
       withdrawal,
-      shortfall,
       closingBalance: balance,
       cumulativeWithdrawal,
       cumulativePension,
@@ -132,7 +123,6 @@ export function simulate(config) {
         investmentGain: sum('investmentGain'),
         deposit: sum('deposit'),
         withdrawal: sum('withdrawal'),
-        shortfall: sum('shortfall'),
         closingBalance: balance,
       });
       points.push({ age: age + 1, balance, cumulativeWithdrawal });
@@ -143,10 +133,8 @@ export function simulate(config) {
     months,
     years,
     points,
-    firstShortfall,
     endingBalance: balance,
     cumulativeWithdrawal,
     cumulativePension,
-    cumulativeShortfall,
   };
 }

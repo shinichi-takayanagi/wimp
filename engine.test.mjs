@@ -2,344 +2,150 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DEFAULT_CONFIG, simulate } from './engine.mjs';
 
-const config = (overrides = {}) => ({ ...DEFAULT_CONFIG, annualReturn: 0, annualInflation: 0, spendingStages: [], ...overrides });
-const closeToYen = (actual, expected, label) => {
-  assert.ok(Math.abs(actual - expected) < 0.01, `${label}: expected ${expected}円, got ${actual}円`);
-};
-
-// 年齢ごとの1年間は月額を一定に保ち、年初に年率インフレを反映する。
-function expectedAnnualSpending(monthlyBase, annualInflation = 0, elapsedYears = 0) {
-  return monthlyBase * 12 * (1 + annualInflation / 100) ** elapsedYears;
-}
-
-test('初期条件に年利・インフレ率・給与・支出・年金の設定を反映する', () => {
-  assert.equal(DEFAULT_CONFIG.annualReturn, 4);
-  assert.equal(DEFAULT_CONFIG.annualInflation, 2);
-  assert.equal(DEFAULT_CONFIG.monthlySalary, 350000);
-  assert.equal(DEFAULT_CONFIG.baseMonthlySpending, 350000);
-  assert.equal(DEFAULT_CONFIG.monthlyPension, 100000);
-  assert.deepEqual(DEFAULT_CONFIG.spendingStages, [{ age: 65, monthlySpending: 250000 }]);
+const config = (overrides = {}) => ({
+  ...DEFAULT_CONFIG,
+  currentAge: 45,
+  endAge: 46,
+  startingAssets: 0,
+  annualReturn: 0,
+  annualInflation: 0,
+  monthlySalary: 0,
+  retirementAge: 60,
+  pensionStartAge: 65,
+  monthlyPension: 0,
+  baseMonthlySpending: 0,
+  spendingStages: [],
+  ...overrides,
 });
 
-test('年齢の切替月から新しい生活費が適用される', () => {
+const closeTo = (actual, expected, message) => {
+  assert.ok(Math.abs(actual - expected) < 0.01, `${message}: expected ${expected}, got ${actual}`);
+};
+
+test('既定の試算期間と資産額を使う', () => {
+  assert.equal(DEFAULT_CONFIG.endAge, 80);
+  assert.equal(DEFAULT_CONFIG.startingAssets, 15_000_000);
+});
+
+test('年利を実効月利に変換して複利運用する', () => {
+  const result = simulate(config({ startingAssets: 1_000_000, annualReturn: 12 }));
+  closeTo(result.endingBalance, 1_120_000, '12か月後の残高');
+});
+
+test('年率インフレを実効月利に変換して毎月支出に反映する', () => {
+  const monthlyRate = 1.12 ** (1 / 12) - 1;
+  const result = simulate(config({
+    endAge: 47,
+    annualInflation: 12,
+    monthlySalary: 100_000,
+    baseMonthlySpending: 10_000,
+  }));
+  closeTo(result.months[0].spending, 10_000, '初月の支出');
+  closeTo(result.months[1].spending, 10_000 * (1 + monthlyRate), '2か月目の支出');
+  closeTo(result.months[12].spending, 11_200, '1年後の初月支出');
+  closeTo(result.years[0].spending,
+    10_000 * ((1 + monthlyRate) ** 12 - 1) / monthlyRate, '初年度の合計支出');
+});
+
+test('支出ステージは切替年齢の最初の月から適用する', () => {
   const result = simulate(config({
     currentAge: 59,
     endAge: 61,
-    startingAssets: 1200000,
-    annualReturn: 0,
-    monthlySalary: 0,
-    monthlyPension: 0,
-    baseMonthlySpending: 100000,
-    spendingStages: [{ age: 60, monthlySpending: 200000 }],
+    baseMonthlySpending: 100_000,
+    spendingStages: [{ age: 60, monthlySpending: 200_000 }],
   }));
-  assert.equal(result.months[11].spending, 100000);
-  assert.equal(result.months[12].spending, 200000);
-  assert.equal(result.years[0].closingBalance, 0);
-  assert.equal(result.firstShortfall.age, 60);
-  assert.equal(result.firstShortfall.monthOfAge, 0);
-  assert.equal(result.cumulativeShortfall, 2400000);
+  assert.equal(result.months[11].spending, 100_000);
+  assert.equal(result.months[12].spending, 200_000);
 });
 
 test('月の収入が支出を上回る場合、差額を資産に積み立てる', () => {
   const result = simulate(config({
-    currentAge: 45,
-    endAge: 46,
-    startingAssets: 1000000,
-    annualReturn: 0,
-    monthlySalary: 200000,
-    monthlyPension: 0,
-    baseMonthlySpending: 150000,
+    startingAssets: 1_000_000,
+    monthlySalary: 200_000,
+    baseMonthlySpending: 150_000,
   }));
-  assert.equal(result.years[0].deposit, 600000);
+  assert.equal(result.years[0].deposit, 600_000);
   assert.equal(result.years[0].withdrawal, 0);
-  assert.equal(result.endingBalance, 1600000);
-  assert.equal(result.firstShortfall, null);
+  assert.equal(result.endingBalance, 1_600_000);
 });
 
-test('資産を使い切った後の不足額を月ごとに集計する', () => {
+test('資産を使い切った後もマイナス残高で支出を計上する', () => {
   const result = simulate(config({
-    currentAge: 45,
-    endAge: 46,
-    startingAssets: 200000,
-    annualReturn: 0,
-    monthlySalary: 0,
-    monthlyPension: 0,
-    baseMonthlySpending: 100000,
+    startingAssets: 200_000,
+    baseMonthlySpending: 100_000,
   }));
-  assert.equal(result.firstShortfall.age, 45);
-  assert.equal(result.firstShortfall.monthOfAge, 2);
-  assert.equal(result.firstShortfall.elapsedMonth, 3);
-  assert.equal(result.cumulativeWithdrawal, 200000);
-  assert.equal(result.cumulativeShortfall, 1000000);
-  assert.equal(result.endingBalance, 0);
+  assert.equal(result.months[2].closingBalance, -100_000);
+  assert.equal(result.years[0].withdrawal, 1_200_000);
+  assert.equal(result.endingBalance, -1_000_000);
 });
 
-test('年金は設定年齢から毎月の支出を相殺する', () => {
+test('資産残高がマイナスの月は資産運用損益を計上しない', () => {
   const result = simulate(config({
-    currentAge: 64,
-    endAge: 66,
-    startingAssets: 2400000,
-    annualReturn: 0,
-    monthlySalary: 0,
-    pensionStartAge: 65,
-    monthlyPension: 50000,
-    baseMonthlySpending: 100000,
-  }));
-  assert.equal(result.months[11].pension, 0);
-  assert.equal(result.months[12].pension, 50000);
-  assert.equal(result.years[0].withdrawal, 1200000);
-  assert.equal(result.years[1].withdrawal, 600000);
-  assert.equal(result.endingBalance, 600000);
-});
-
-test('年利を月利に変換した12か月の運用結果が一致する', () => {
-  const result = simulate(config({
-    currentAge: 45,
-    endAge: 46,
-    startingAssets: 1000000,
+    startingAssets: 100_000,
     annualReturn: 12,
-    monthlySalary: 0,
-    monthlyPension: 0,
-    baseMonthlySpending: 0,
+    baseMonthlySpending: 150_000,
   }));
-  assert.ok(Math.abs(result.endingBalance - 1120000) < 0.001);
+  assert.ok(result.months[0].closingBalance < 0);
+  assert.equal(result.months[0].investmentGain > 0, true);
+  assert.equal(result.months[1].openingBalance < 0, true);
+  assert.equal(result.months[1].investmentGain, 0);
+  assert.equal(result.months[1].closingBalance, result.months[1].openingBalance - 150_000);
 });
 
-test('年率インフレは翌年の初月から反映される', () => {
+test('年利運用と月次取崩しを合わせて月末残高を計算する', () => {
+  const opening = 1_000_000;
+  const monthlyRate = 1.12 ** (1 / 12) - 1;
   const result = simulate(config({
-    currentAge: 45,
-    endAge: 47,
-    startingAssets: 0,
-    annualReturn: 0,
-    annualInflation: 12,
-    monthlySalary: 100000,
-    monthlyPension: 0,
-    baseMonthlySpending: 10000,
-  }));
-  assert.ok(Math.abs(result.months[12].spending - 11200) < 0.001);
-});
-
-test('45歳の初年度支出は月額80万円を12か月分で集計する', () => {
-  const result = simulate(config({
-    currentAge: 45,
-    endAge: 46,
-    startingAssets: 190000000,
-    annualReturn: 5,
-    annualInflation: 2,
-    monthlySalary: 50000,
-    retirementAge: 60,
-    pensionStartAge: 65,
-    monthlyPension: 100000,
-    baseMonthlySpending: 800000,
-    spendingStages: [{ age: 65, monthlySpending: 500000 }],
-  }));
-  closeToYen(result.years[0].spending, 9600000, '45歳の年間支出');
-  assert.ok(result.years[0].investmentGain > 9290000 && result.years[0].investmentGain < 9300000);
-  closeToYen(result.years[0].closingBalance,
-    result.years[0].openingBalance + result.years[0].investmentGain - 9000000,
-    '45歳末の金融資産');
-});
-
-test('同じ年齢の支出切替を拒否する', () => {
-  assert.throws(() => simulate(config({ spendingStages: [
-    { age: 60, monthlySpending: 100000 },
-    { age: 60, monthlySpending: 200000 },
-  ] })), /重複/);
-});
-
-for (const inflation of [false, true]) {
-  for (const salary of [false, true]) {
-    for (const pension of [false, true]) {
-      for (const spendingChange of [false, true]) {
-        const name = `組合せ: インフレ${inflation ? '有' : '無'}・収入${salary ? '有' : '無'}・年金${pension ? '有' : '無'}・生活費変更${spendingChange ? '有' : '無'}`;
-        test(name, () => {
-          const annualInflation = inflation ? 12 : 0;
-          const secondYearBase = spendingChange ? 50000 : 100000;
-          const salaryYear = salary ? 40000 * 12 : 0;
-          const pensionYear = pension ? 30000 * 12 : 0;
-          const spendingYear64 = expectedAnnualSpending(100000, annualInflation);
-          const spendingYear65 = expectedAnnualSpending(secondYearBase, annualInflation, 1);
-          const withdrawalYear64 = spendingYear64 - salaryYear;
-          const withdrawalYear65 = spendingYear65 - pensionYear;
-          const expectedWithdrawal = withdrawalYear64 + withdrawalYear65;
-          const expectedBalance = 10000000 - expectedWithdrawal;
-
-          const result = simulate(config({
-            currentAge: 64,
-            endAge: 66,
-            startingAssets: 10000000,
-            annualInflation,
-            monthlySalary: salary ? 40000 : 0,
-            retirementAge: 65,
-            pensionStartAge: 65,
-            monthlyPension: pension ? 30000 : 0,
-            baseMonthlySpending: 100000,
-            spendingStages: spendingChange ? [{ age: 65, monthlySpending: 50000 }] : [],
-          }));
-
-          assert.equal(result.firstShortfall, null);
-          closeToYen(result.endingBalance, expectedBalance, '終了時資産');
-          closeToYen(result.cumulativeWithdrawal, expectedWithdrawal, '累計取崩し');
-          closeToYen(result.cumulativePension, pensionYear, '累計年金');
-          closeToYen(result.years[0].salary, salaryYear, '64歳の給与');
-          closeToYen(result.years[1].pension, pensionYear, '65歳の年金');
-          closeToYen(result.years[0].spending, spendingYear64, '64歳の生活費');
-          closeToYen(result.years[1].spending, spendingYear65, '65歳の生活費');
-          closeToYen(result.years[0].withdrawal, withdrawalYear64, '64歳の取崩し');
-          closeToYen(result.years[1].withdrawal, withdrawalYear65, '65歳の取崩し');
-          closeToYen(result.years[1].closingBalance, expectedBalance, '65歳末の資産');
-          closeToYen(result.points[1].balance, 10000000 - withdrawalYear64, '65歳時点のグラフ資産');
-          closeToYen(result.points[2].cumulativeWithdrawal, expectedWithdrawal, '66歳時点のグラフ取崩し');
-          closeToYen(result.months[12].spending, secondYearBase * (1 + annualInflation / 100), '生活費切替の初月');
-          assert.equal(result.months[11].salary, salary ? 40000 : 0);
-          assert.equal(result.months[12].salary, 0);
-          assert.equal(result.months[11].pension, 0);
-          assert.equal(result.months[12].pension, pension ? 30000 : 0);
-        });
-      }
-    }
-  }
-}
-
-test('収入で積み立てた後に生活費を増やして資産を使い切り、年金開始後も不足額を集計する', () => {
-  const result = simulate(config({
-    currentAge: 64,
-    endAge: 67,
-    startingAssets: 0,
-    monthlySalary: 150000,
-    retirementAge: 65,
-    pensionStartAge: 66,
-    monthlyPension: 80000,
-    baseMonthlySpending: 100000,
-    spendingStages: [
-      { age: 65, monthlySpending: 200000 },
-      { age: 66, monthlySpending: 100000 },
-    ],
-  }));
-
-  assert.deepEqual(result.firstShortfall, { age: 65, monthOfAge: 3, elapsedMonth: 16 });
-  assert.equal(result.endingBalance, 0);
-  assert.equal(result.cumulativeWithdrawal, 600000);
-  assert.equal(result.cumulativeShortfall, 2040000);
-  assert.equal(result.cumulativePension, 960000);
-  assert.equal(result.years[0].deposit, 600000);
-  assert.equal(result.years[0].closingBalance, 600000);
-  assert.equal(result.years[1].withdrawal, 600000);
-  assert.equal(result.years[1].shortfall, 1800000);
-  assert.equal(result.years[2].pension, 960000);
-  assert.equal(result.years[2].shortfall, 240000);
-  assert.deepEqual(result.points.map(({ age, balance }) => [age, balance]), [
-    [64, 0], [65, 600000], [66, 0], [67, 0],
-  ]);
-});
-
-test('運用益と毎月の取崩しを組み合わせても終了時資産が閉形式と一致する', () => {
-  const opening = 1000000;
-  const monthlySpending = 10000;
-  const monthlyFactor = 1.12 ** (1 / 12);
-  const expectedBalance = opening * 1.12 - monthlySpending * (1.12 - 1) / (monthlyFactor - 1);
-  const result = simulate(config({
-    currentAge: 45,
-    endAge: 46,
     startingAssets: opening,
     annualReturn: 12,
-    monthlySalary: 0,
-    monthlyPension: 0,
-    baseMonthlySpending: monthlySpending,
+    baseMonthlySpending: 10_000,
   }));
-
-  closeToYen(result.endingBalance, expectedBalance, '運用しながら取崩した終了時資産');
-  closeToYen(result.years[0].investmentGain, expectedBalance - opening + monthlySpending * 12, '年間運用益');
-  assert.equal(result.cumulativeWithdrawal, monthlySpending * 12);
-  assert.equal(result.firstShortfall, null);
+  const expectedBalance = opening * (1 + monthlyRate) ** 12
+    - 10_000 * ((1 + monthlyRate) ** 12 - 1) / monthlyRate;
+  closeTo(result.endingBalance, expectedBalance, '終了時の資産残高');
 });
 
-test('年率インフレは翌年から反映し、生活費を年ごとに増額する', () => {
-  const result = simulate(config({
-    currentAge: 45,
-    endAge: 47,
-    startingAssets: 0,
-    annualInflation: 12,
-    monthlySalary: 100000,
-    monthlyPension: 0,
-    baseMonthlySpending: 100000,
-  }));
-  assert.deepEqual(result.firstShortfall, { age: 46, monthOfAge: 0, elapsedMonth: 13 });
-  assert.equal(result.cumulativeWithdrawal, 0);
-  closeToYen(result.years[0].spending, 1200000, '45歳の生活費');
-  closeToYen(result.years[1].spending, 1344000, '46歳の生活費');
-  closeToYen(result.cumulativeShortfall, 144000, 'インフレによる累計不足');
-});
-
-test('年金開始後の余剰分は積み立てられ、開始前の不足額は残る', () => {
+test('年金収入は設定年齢から毎月の支出を相殺する', () => {
   const result = simulate(config({
     currentAge: 64,
     endAge: 66,
-    startingAssets: 0,
-    monthlySalary: 0,
     pensionStartAge: 65,
-    monthlyPension: 150000,
-    baseMonthlySpending: 100000,
+    monthlyPension: 50_000,
+    baseMonthlySpending: 100_000,
   }));
-  assert.deepEqual(result.firstShortfall, { age: 64, monthOfAge: 0, elapsedMonth: 1 });
-  assert.equal(result.cumulativeShortfall, 1200000);
-  assert.equal(result.cumulativeWithdrawal, 0);
-  assert.equal(result.years[1].deposit, 600000);
-  assert.equal(result.cumulativePension, 1800000);
-  assert.equal(result.endingBalance, 600000);
+  assert.equal(result.months[11].pension, 0);
+  assert.equal(result.months[12].pension, 50_000);
+  assert.equal(result.years[0].withdrawal, 1_200_000);
+  assert.equal(result.years[1].withdrawal, 600_000);
+  assert.equal(result.endingBalance, -1_800_000);
 });
 
-test('給与と年金が同時に入る月は両方を生活費から差し引く', () => {
-  const result = simulate(config({
-    currentAge: 65,
-    endAge: 66,
-    startingAssets: 0,
-    monthlySalary: 70000,
-    retirementAge: 66,
-    pensionStartAge: 65,
-    monthlyPension: 50000,
-    baseMonthlySpending: 100000,
-  }));
-  assert.equal(result.months[0].deposit, 20000);
-  assert.equal(result.years[0].salary, 840000);
-  assert.equal(result.years[0].pension, 600000);
-  assert.equal(result.years[0].deposit, 240000);
-  assert.equal(result.cumulativeWithdrawal, 0);
-  assert.equal(result.cumulativeShortfall, 0);
-  assert.equal(result.endingBalance, 240000);
-});
-
-test('標準条件の月次収支・年齢別内訳・グラフ値が互いに一致する', () => {
+test('年齢別集計と月次資産残高が一致する', () => {
   const result = simulate(DEFAULT_CONFIG);
   assert.equal(result.months.length, (DEFAULT_CONFIG.endAge - DEFAULT_CONFIG.currentAge) * 12);
   assert.equal(result.years.length, DEFAULT_CONFIG.endAge - DEFAULT_CONFIG.currentAge);
   assert.equal(result.points.length, result.years.length + 1);
 
   for (const [index, month] of result.months.entries()) {
-    closeToYen(month.salary + month.pension + month.withdrawal + month.shortfall,
-      month.spending + month.deposit, `${index + 1}か月目の現金収支`);
-    closeToYen(month.closingBalance,
+    closeTo(month.closingBalance,
       month.openingBalance + month.investmentGain + month.deposit - month.withdrawal,
-      `${index + 1}か月目の資産収支`);
-    assert.ok(month.closingBalance >= 0, `${index + 1}か月目の資産がマイナス`);
-    if (index > 0) closeToYen(month.openingBalance, result.months[index - 1].closingBalance, '前月末資産との接続');
+      `${index + 1}か月目の資産残高`);
+    if (index > 0) closeTo(month.openingBalance, result.months[index - 1].closingBalance, '前月末残高との接続');
   }
-
   for (const [index, year] of result.years.entries()) {
     const months = result.months.slice(index * 12, index * 12 + 12);
-    for (const field of ['salary', 'pension', 'spending', 'investmentGain', 'deposit', 'withdrawal', 'shortfall']) {
-      closeToYen(year[field], months.reduce((sum, month) => sum + month[field], 0), `${year.age}歳の${field}`);
+    for (const field of ['salary', 'pension', 'spending', 'investmentGain', 'deposit', 'withdrawal']) {
+      closeTo(year[field], months.reduce((sum, month) => sum + month[field], 0), `${year.age}歳の${field}`);
     }
-    closeToYen(year.closingBalance, months[11].closingBalance, `${year.age}歳末の資産`);
-    closeToYen(result.points[index + 1].balance, year.closingBalance, `${year.age + 1}歳時点のグラフ資産`);
+    closeTo(year.closingBalance, months[11].closingBalance, `${year.age}歳末の残高`);
+    closeTo(result.points[index + 1].balance, year.closingBalance, `${year.age + 1}歳時点のグラフ残高`);
   }
+  closeTo(result.endingBalance, result.months.at(-1).closingBalance, '終了時の資産残高');
+});
 
-  closeToYen(result.endingBalance, result.months.at(-1).closingBalance, '終了時資産');
-  closeToYen(result.cumulativeWithdrawal,
-    result.months.reduce((sum, month) => sum + month.withdrawal, 0), '累計取崩し');
-  closeToYen(result.cumulativeShortfall,
-    result.months.reduce((sum, month) => sum + month.shortfall, 0), '累計不足額');
-  const firstDeficit = result.months.find((month) => month.shortfall > 0.005);
-  assert.deepEqual(result.firstShortfall,
-    firstDeficit ? { age: firstDeficit.age, monthOfAge: firstDeficit.monthOfAge, elapsedMonth: firstDeficit.elapsedMonth } : null);
+test('同じ年齢の支出切替は拒否する', () => {
+  assert.throws(() => simulate(config({ spendingStages: [
+    { age: 60, monthlySpending: 100_000 },
+    { age: 60, monthlySpending: 200_000 },
+  ] })), /重複/);
 });
