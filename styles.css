@@ -19,19 +19,19 @@ a{color:inherit}
 .workspace{display:grid;grid-template-columns:minmax(320px,400px) minmax(0,1fr);align-items:stretch;gap:16px;padding:6px 0 6px}
 .input-panel,.result-panel{background:#fff;border:1px solid #e4ebe3;border-radius:13px;box-shadow:0 10px 30px #1f3e260b;min-width:0}
 .input-panel{overflow:hidden}
-.panel-heading{padding:6px 15px 5px;background:#e8f0e8;border-bottom:1px solid #d8e6d9}
+.panel-heading{width:66.666%;padding:6px 15px 5px;background:#e8f0e8;border-bottom:1px solid #d8e6d9}
 .section-number{font-size:9px;font-weight:900;letter-spacing:.16em;color:#5d8774}
 .panel-heading h2,.result-heading h2{font-size:17px;letter-spacing:.02em;margin:3px 0;line-height:1.3}
 .panel-heading p{font-size:10px;margin:0;color:#697b70;line-height:1.5}
-.form-section{margin:6px 10px;padding:7px 10px;border:1px solid #e5ece7;border-radius:8px;background:#fff}
+.form-section{margin:7px 10px;padding:8px 10px;border:1px solid #e5ece7;border-radius:8px;background:#fff}
 .form-section-title{display:flex;align-items:center;gap:8px;margin-bottom:5px}
 .form-section-title h3{margin:0;font-size:12px;letter-spacing:.025em}
 .section-icon{background:#e8eef8;color:#496d9e;font-size:9px;font-weight:900;border-radius:5px;padding:4px 6px}
-.field-grid{display:grid;gap:5px;margin-bottom:5px}
+.field-grid{display:grid;gap:7px;margin-bottom:6px}
 .field-grid:last-child{margin-bottom:0}
 .two-col{grid-template-columns:repeat(2,minmax(0,1fr))}
 .field,.stage-field{display:block;min-width:0}
-.field>.field-label{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:800;color:#526d5c;margin-bottom:3px;white-space:nowrap}
+.field>.field-label{display:flex;align-items:center;gap:5px;font-size:10px;font-weight:800;color:#526d5c;margin-bottom:5px;white-space:nowrap;line-height:1.35}
 .field-number{display:inline-grid;place-items:center;flex:0 0 auto;min-width:17px;height:15px;padding:0 3px;border-radius:4px;background:#edf3e8;color:#648d4e;font-size:8px;font-weight:900;font-variant-numeric:tabular-nums}
 .input-wrap{display:flex;align-items:center;min-width:0;height:27px;border:1px solid #d5e0d7;border-radius:7px;background:#fff;transition:border-color .2s,box-shadow .2s}
 .input-wrap:focus-within{border-color:#73a747;box-shadow:0 0 0 3px #8ebd5b2c}
@@ -41,21 +41,21 @@ a{color:inherit}
 .unit{font-size:10px;color:#819187;font-weight:700;white-space:nowrap;margin-right:8px}
 .field-help{margin:7px 0 0;font-size:9px;line-height:1.5;color:#849188}
 .spending-section{margin-bottom:7px}
-.stage-head{display:grid;grid-template-columns:1fr 1.17fr 26px;gap:7px;margin:6px 0 3px;color:#849288;font-size:9px;font-weight:700}
+.stage-head{display:grid;grid-template-columns:1fr 1.17fr 26px;gap:7px;margin:8px 0 5px;color:#849288;font-size:9px;font-weight:700;line-height:1.4}
 .stage-head span:first-child{grid-column:1}
 .stage-head span:nth-child(2){grid-column:2}
-.stage-list{display:grid;gap:4px}
+.stage-list{display:grid;gap:7px}
 .stage-row{display:grid;grid-template-columns:1fr 1.17fr 26px;gap:7px;align-items:center}
 .stage-row .input-wrap{height:27px}
 .stage-row input{font-size:12px}
 .remove-stage{border:0;background:#f7f2ef;color:#b67c60;border-radius:6px;height:26px;width:26px;font-size:18px;line-height:1;display:grid;place-items:center}
 .remove-stage:hover{background:#ffe6d9;color:#9c4d27}
-.add-button{border:1px dashed #a7c59b;background:#f8fbf4;color:#4e8b41;border-radius:7px;width:100%;padding:5px;margin-top:6px;font-size:10px;font-weight:800}
+.add-button{border:1px dashed #a7c59b;background:#f8fbf4;color:#4e8b41;border-radius:7px;width:100%;padding:6px;margin-top:8px;font-size:10px;font-weight:800}
 .add-button span{font-size:13px;margin-right:4px}
 .add-button:hover{background:#edf7e5}
 .form-error{margin:0 17px 13px;padding:8px 10px;background:#fff0ea;color:#9d4028;border-radius:7px;font-size:10px;font-weight:700;line-height:1.5}
 .result-panel{padding:0 13px 13px;background:#fff;border-color:#c5d7ca}
-.result-heading{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:0 -13px 7px;padding:6px 15px 5px;background:#e8f0e8;border-bottom:1px solid #d8e6d9;border-radius:13px 13px 0 0}
+.result-heading{display:flex;width:66.666%;justify-content:space-between;align-items:center;gap:10px;margin:0 -13px 7px;padding:6px 15px 5px;background:#e8f0e8;border-bottom:1px solid #d8e6d9;border-radius:13px 0 0 0}
 .result-heading h2{margin-bottom:0}
 .metrics{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin:0 0 8px}
 .metric{border:1px solid #e2eae1;border-radius:9px;padding:7px 10px 6px;min-width:0;background:#fff}

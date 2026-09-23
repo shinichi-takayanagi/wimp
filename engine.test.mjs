@@ -25,6 +25,50 @@ const closeTo = (actual, expected, message) => {
 test('既定の試算期間と資産額を使う', () => {
   assert.equal(DEFAULT_CONFIG.endAge, 80);
   assert.equal(DEFAULT_CONFIG.startingAssets, 15_000_000);
+  assert.equal(DEFAULT_CONFIG.salaryStages.length, 1);
+});
+
+test('労働収入の切替は設定年齢の最初の月から月次収支へ反映する', () => {
+  const result = simulate(config({
+    currentAge: 44,
+    endAge: 47,
+    monthlySalary: 200_000,
+    baseMonthlySpending: 150_000,
+    salaryStages: [{ age: 46, monthlySalary: 100_000 }],
+  }));
+
+  assert.equal(result.months[23].salary, 200_000);
+  assert.equal(result.months[24].salary, 100_000);
+  assert.equal(result.months[24].deposit, 0);
+  assert.equal(result.months[24].withdrawal, 50_000);
+  assert.equal(result.years[0].salary, 2_400_000);
+  assert.equal(result.years[1].salary, 2_400_000);
+  assert.equal(result.years[2].salary, 1_200_000);
+  assert.equal(result.years[2].withdrawal, 600_000);
+  assert.equal(result.endingBalance, 600_000);
+});
+
+test('労働収入の複数切替は年齢順に適用し、退職後は収入を止める', () => {
+  const result = simulate(config({
+    currentAge: 58,
+    endAge: 63,
+    monthlySalary: 300_000,
+    retirementAge: 61,
+    salaryStages: [
+      { age: 60, monthlySalary: 200_000 },
+      { age: 59, monthlySalary: 250_000 },
+    ],
+  }));
+
+  assert.equal(result.months[11].salary, 300_000);
+  assert.equal(result.months[12].salary, 250_000);
+  assert.equal(result.months[24].salary, 200_000);
+  assert.equal(result.months[35].salary, 200_000);
+  assert.equal(result.months[36].salary, 0);
+  assert.equal(result.years[0].salary, 3_600_000);
+  assert.equal(result.years[1].salary, 3_000_000);
+  assert.equal(result.years[2].salary, 2_400_000);
+  assert.equal(result.years[3].salary, 0);
 });
 
 test('年利を実効月利に変換して複利運用する', () => {

@@ -5,7 +5,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   annualReturn: 4,
   annualInflation: 2,
   monthlySalary: 350000,
-  salaryStages: [],
+  salaryStages: [{ age: 55, monthlySalary: 350000 }],
   retirementAge: 60,
   pensionStartAge: 65,
   monthlyPension: 100000,
