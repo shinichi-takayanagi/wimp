@@ -4,6 +4,7 @@ const STORAGE_KEY = 'wimp:config:v3';
 const LEGACY_STORAGE_KEY = 'wimp:config:v2';
 const form = document.querySelector('#simulation-form');
 const stagesElement = document.querySelector('#spending-stages');
+const salaryStagesElement = document.querySelector('#salary-stages');
 const errorElement = document.querySelector('#form-error');
 const chart = document.querySelector('#projection-chart');
 const ageSelect = document.querySelector('#age-select');
@@ -46,6 +47,26 @@ function addStageRow(stage) {
   updateStageNumberBadges();
 }
 
+function addSalaryStageRow(stage) {
+  const row = document.createElement('div');
+  row.className = 'stage-row';
+  const ageLabel = document.createElement('label');
+  ageLabel.className = 'stage-field';
+  ageLabel.innerHTML = '<span class="input-wrap"><input class="salary-stage-age" type="number" min="18" max="110" step="1" inputmode="numeric" required aria-label="労働収入変化時の年齢"><span class="unit">歳</span></span>';
+  ageLabel.querySelector('input').value = stage.age;
+  const salaryLabel = document.createElement('label');
+  salaryLabel.className = 'stage-field';
+  salaryLabel.innerHTML = '<span class="input-wrap"><input class="salary-stage-amount" type="number" min="0" step="0.1" inputmode="decimal" required aria-label="労働収入変化後の毎月の労働収入"><span class="unit">万円</span></span>';
+  salaryLabel.querySelector('input').value = toMan(stage.monthlySalary);
+  const remove = document.createElement('button');
+  remove.className = 'remove-stage';
+  remove.type = 'button';
+  remove.setAttribute('aria-label', 'この労働収入の設定を削除');
+  remove.textContent = '×';
+  row.append(ageLabel, salaryLabel, remove);
+  salaryStagesElement.append(row);
+}
+
 function updateStageNumberBadges() {
   [...stagesElement.querySelectorAll('.stage-row')].forEach((row, index) => {
     row.querySelector('.stage-number').textContent = String(6 + index);
@@ -61,6 +82,8 @@ function populateForm(config) {
   }
   stagesElement.replaceChildren();
   for (const stage of config.spendingStages) addStageRow(stage);
+  salaryStagesElement.replaceChildren();
+  for (const stage of (config.salaryStages ?? [])) addSalaryStageRow(stage);
 }
 
 function readConfig() {
@@ -72,6 +95,10 @@ function readConfig() {
     annualReturn: value('annualReturn'),
     annualInflation: value('annualInflation'),
     monthlySalary: value('monthlySalary') * 10000,
+    salaryStages: [...salaryStagesElement.querySelectorAll('.stage-row')].map((row) => ({
+      age: inputNumber(row.querySelector('.salary-stage-age').value),
+      monthlySalary: inputNumber(row.querySelector('.salary-stage-amount').value) * 10000,
+    })),
     retirementAge: value('retirementAge'),
     pensionStartAge: value('pensionStartAge'),
     monthlyPension: value('monthlyPension') * 10000,
@@ -105,6 +132,7 @@ function initialConfig() {
 }
 
 function applyNewDefaultsToPreviousDefaults(config) {
+  config.salaryStages ??= [];
   const previousStages = [
     { age: 60, monthlySpending: 150000 },
     { age: 65, monthlySpending: 120000 },
@@ -525,32 +553,54 @@ async function exportPng() {
 populateForm(initialConfig());
 update();
 form.addEventListener('input', update);
-document.querySelector('#add-stage').addEventListener('click', () => {
-  const ages = [...stagesElement.querySelectorAll('.stage-age')].map((input) => Number(input.value)).filter(Number.isFinite);
+function nextStageAge(container) {
+  const ages = [...container.querySelectorAll('.stage-age, .salary-stage-age')]
+    .map((input) => Number(input.value)).filter(Number.isFinite);
   const currentAge = Number(form.elements.currentAge.value) || 45;
   const endAge = Number(form.elements.endAge.value) || 100;
   const preferredAge = Math.max(currentAge + 1, ...ages.map((age) => age + 5), 60);
   const candidates = Array.from({ length: Math.max(0, endAge - currentAge - 1) }, (_, index) => currentAge + index + 1)
     .filter((age) => !ages.includes(age));
-  const nextAge = candidates.find((age) => age >= preferredAge) ?? candidates.at(-1);
+  return candidates.find((age) => age >= preferredAge) ?? candidates.at(-1);
+}
+
+function showNoStageAgeError(kind) {
+  if (!errorElement) return;
+  errorElement.textContent = `追加できる年齢がありません。登録済みの${kind}変化時の年齢を変更してください。`;
+  errorElement.hidden = false;
+}
+
+document.querySelector('#add-stage').addEventListener('click', () => {
+  const nextAge = nextStageAge(stagesElement);
   if (nextAge === undefined) {
-    if (errorElement) {
-      errorElement.textContent = '追加できる年齢がありません。登録済みの支出変化時の年齢を変更してください。';
-      errorElement.hidden = false;
-    }
+    showNoStageAgeError('支出');
     return;
   }
   const lastSpending = stagesElement.lastElementChild?.querySelector('.stage-spending')?.value;
   addStageRow({ age: nextAge, monthlySpending: (Number(lastSpending) || Number(form.elements.baseMonthlySpending.value) || 0) * 10000 });
   update();
 });
-stagesElement.addEventListener('click', (event) => {
-  const button = event.target.closest('.remove-stage');
-  if (!button) return;
-  button.closest('.stage-row').remove();
-  updateStageNumberBadges();
+document.querySelector('#add-salary-stage').addEventListener('click', () => {
+  const nextAge = nextStageAge(salaryStagesElement);
+  if (nextAge === undefined) {
+    showNoStageAgeError('労働収入');
+    return;
+  }
+  const lastSalary = salaryStagesElement.lastElementChild?.querySelector('.salary-stage-amount')?.value;
+  addSalaryStageRow({ age: nextAge, monthlySalary: (Number(lastSalary) || Number(form.elements.monthlySalary.value) || 0) * 10000 });
   update();
 });
+function removeStageOnClick(container) {
+  container.addEventListener('click', (event) => {
+    const button = event.target.closest('.remove-stage');
+    if (!button) return;
+    button.closest('.stage-row').remove();
+    updateStageNumberBadges();
+    update();
+  });
+}
+removeStageOnClick(stagesElement);
+removeStageOnClick(salaryStagesElement);
 ageSelect.addEventListener('change', () => selectAge(Number(ageSelect.value)));
 function chartAgeAtPointer(event) {
   if (!latestConfig) return null;
