@@ -27,7 +27,7 @@ function addStageRow(stage) {
   row.className = 'stage-row';
   const ageLabel = document.createElement('label');
   ageLabel.className = 'stage-field';
-  ageLabel.innerHTML = '<span class="input-wrap"><input class="stage-age" type="number" min="18" max="110" step="1" inputmode="numeric" required aria-label="支出の切替年齢"><span class="unit">歳</span></span>';
+  ageLabel.innerHTML = '<span class="input-wrap"><input class="stage-age" type="number" min="18" max="110" step="1" inputmode="numeric" required aria-label="支出変化の年齢"><span class="unit">歳</span></span>';
   ageLabel.querySelector('input').value = stage.age;
   const spendingLabel = document.createElement('label');
   spendingLabel.className = 'stage-field';
@@ -299,19 +299,13 @@ function renderDetails(config, result) {
     { label: '支出', value: year.spending, operator: '−', references: spendingReferences },
     { label: '収支差額', value: year.salary + year.pension - year.spending, operator: '=' },
   ]]);
-  addSubpanel('資産', [
-    [
-      { label: '年初残高', value: year.openingBalance },
-      { label: '運用損益', value: year.investmentGain, operator: '+' },
-      { label: '運用後残高', value: year.openingBalance + year.investmentGain, operator: '=' },
-    ],
-    [
-      { label: '運用後残高', value: year.openingBalance + year.investmentGain },
-      { label: '積立', value: year.deposit, operator: '+', references: operatingReferences },
-      { label: '取崩し', value: year.withdrawal, operator: '−', references: operatingReferences },
-      { label: '年末残高', value: year.closingBalance, operator: '=', emphasis: true },
-    ],
-  ]);
+  addSubpanel('資産', [[
+    { label: '年初残高', value: year.openingBalance },
+    { label: '運用損益', value: year.investmentGain, operator: '+' },
+    { label: '積立', value: year.deposit, operator: '+', references: operatingReferences },
+    { label: '取崩し', value: year.withdrawal, operator: '−', references: operatingReferences },
+    { label: '年末残高', value: year.closingBalance, operator: '=', emphasis: true },
+  ]]);
 }
 
 function selectAge(age) {
@@ -431,7 +425,7 @@ document.querySelector('#add-stage').addEventListener('click', () => {
   const nextAge = candidates.find((age) => age >= preferredAge) ?? candidates.at(-1);
   if (nextAge === undefined) {
     if (errorElement) {
-      errorElement.textContent = '追加できる年齢がありません。登録済みの支出の切替年齢を変更してください。';
+      errorElement.textContent = '追加できる年齢がありません。登録済みの支出変化の年齢を変更してください。';
       errorElement.hidden = false;
     }
     return;
