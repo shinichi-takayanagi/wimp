@@ -45,7 +45,7 @@ function addStageRow(stage) {
 
 function updateStageNumberBadges() {
   [...stagesElement.querySelectorAll('.stage-row')].forEach((row, index) => {
-    row.querySelector('.stage-number').textContent = String(4 + index);
+    row.querySelector('.stage-number').textContent = String(5 + index);
   });
 }
 
@@ -239,8 +239,9 @@ function renderDetails(config, result) {
     .filter(({ stage }) => stage.age <= year.age)
     .sort((a, b) => a.stage.age - b.stage.age)
     .at(-1)?.index;
-  const spendingReferences = [activeStageIndex === undefined ? 3 : 4 + activeStageIndex];
-  const operatingReferences = [1, 2, ...spendingReferences];
+  const spendingReferences = [activeStageIndex === undefined ? 3 : 5 + activeStageIndex];
+  const operatingGain = year.investmentGain;
+  const balanceFlow = year.investmentGain + year.deposit - year.withdrawal;
   const makeItem = (label, value, references = [], emphasis = false) => {
     const cell = document.createElement('div');
     cell.className = `detail-item formula-item${emphasis ? ' detail-item-emphasis' : ''}`;
@@ -293,16 +294,25 @@ function renderDetails(config, result) {
     for (const formula of formulas) addFormula(subpanel, formula);
     grid.append(subpanel);
   };
-  addSubpanel('収支', [[
+  const incomeAndReturn = year.salary + year.pension + operatingGain;
+  const incomeFormula = [
     { label: '労働収入', value: year.salary, references: [1] },
     { label: '年金収入', value: year.pension, operator: '+', references: [2] },
+    { label: '運用損益', value: operatingGain, operator: '+' },
+    { label: '収入・運用益計', value: incomeAndReturn, operator: '=' },
+  ];
+  const cashflowFormula = [
+    { label: '収入・運用益計', value: incomeAndReturn },
     { label: '支出', value: year.spending, operator: '−', references: spendingReferences },
-    { label: '収支差額', value: year.salary + year.pension - year.spending, operator: '=', references: operatingReferences },
-  ]]);
+  ];
+  if (year.shortfall > 0.005) {
+    cashflowFormula.push({ label: '不足額', value: year.shortfall, operator: '+' });
+  }
+  cashflowFormula.push({ label: '収支', value: balanceFlow, operator: '=', references: [4] });
+  addSubpanel('収支', [incomeFormula, cashflowFormula]);
   addSubpanel('資産', [[
     { label: '年初残高', value: year.openingBalance },
-    { label: '運用損益', value: year.investmentGain, operator: '+' },
-    { label: '収支差額', value: year.deposit - year.withdrawal, operator: '+', references: operatingReferences },
+    { label: '収支', value: balanceFlow, operator: '+', references: [4] },
     { label: '年末残高', value: year.closingBalance, operator: '=', emphasis: true },
   ]]);
 }

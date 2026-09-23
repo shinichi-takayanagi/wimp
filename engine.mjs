@@ -62,7 +62,7 @@ export function simulate(config) {
   validateConfig(config);
   const stages = [...config.spendingStages].sort((a, b) => a.age - b.age);
   const monthlyReturn = Math.pow(1 + config.annualReturn / 100, 1 / 12) - 1;
-  const monthlyInflation = Math.pow(1 + config.annualInflation / 100, 1 / 12);
+  const annualInflationFactor = 1 + config.annualInflation / 100;
   const monthCount = (config.endAge - config.currentAge) * 12;
   const months = [];
   const years = [];
@@ -86,7 +86,7 @@ export function simulate(config) {
     const openingBalance = balance;
     const salary = age < config.retirementAge ? config.monthlySalary : 0;
     const pension = age >= config.pensionStartAge ? config.monthlyPension : 0;
-    const spending = baseSpending * Math.pow(monthlyInflation, index);
+    const spending = baseSpending * Math.pow(annualInflationFactor, Math.floor(index / 12));
     const investmentGain = openingBalance * monthlyReturn;
     const availableAssets = Math.max(0, openingBalance + investmentGain);
     const cashFlow = salary + pension - spending;
