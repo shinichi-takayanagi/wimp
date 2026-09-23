@@ -5,6 +5,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   annualReturn: 4,
   annualInflation: 2,
   monthlySalary: 350000,
+  salaryStages: [],
   retirementAge: 60,
   pensionStartAge: 65,
   monthlyPension: 100000,
@@ -36,6 +37,22 @@ export function validateConfig(config) {
   number('annualInflation', -20, 50, 'インフレ率（年率）');
   number('monthlySalary', 0, 1e10, '毎月の労働収入');
   integer('retirementAge', 18, 110, '労働収入の終了年齢');
+  if (!Array.isArray(config.salaryStages) || config.salaryStages.length > 30) {
+    throw new Error('労働収入の設定は30件以内にしてください。');
+  }
+  const salaryAges = new Set();
+  for (const stage of config.salaryStages) {
+    if (!Number.isInteger(stage.age) || stage.age < 18 || stage.age > 110) {
+      throw new Error('労働収入の切替年齢は18〜110歳の整数で入力してください。');
+    }
+    if (!isFiniteNumber(stage.monthlySalary) || stage.monthlySalary < 0 || stage.monthlySalary > 1e10) {
+      throw new Error('切替後の毎月の労働収入は0以上で入力してください。');
+    }
+    if (salaryAges.has(stage.age)) {
+      throw new Error('同じ年齢の労働収入の設定が重複しています。');
+    }
+    salaryAges.add(stage.age);
+  }
   integer('pensionStartAge', 60, 75, '年金受給開始年齢');
   number('monthlyPension', 0, 1e10, '毎月の年金収入');
   number('baseMonthlySpending', 0, 1e10, '毎月の支出');
@@ -61,6 +78,7 @@ export function validateConfig(config) {
 export function simulate(config) {
   validateConfig(config);
   const stages = [...config.spendingStages].sort((a, b) => a.age - b.age);
+  const salaryStages = [...config.salaryStages].sort((a, b) => a.age - b.age);
   const monthlyReturn = Math.pow(1 + config.annualReturn / 100, 1 / 12) - 1;
   const monthlyInflation = Math.pow(1 + config.annualInflation / 100, 1 / 12) - 1;
   const monthCount = (config.endAge - config.currentAge) * 12;
@@ -71,7 +89,9 @@ export function simulate(config) {
   let cumulativeWithdrawal = 0;
   let cumulativePension = 0;
   let activeStage = 0;
+  let activeSalaryStage = 0;
   let baseSpending = config.baseMonthlySpending;
+  let monthlySalary = config.monthlySalary;
 
   for (let index = 0; index < monthCount; index += 1) {
     const age = config.currentAge + Math.floor(index / 12);
@@ -80,9 +100,13 @@ export function simulate(config) {
       baseSpending = stages[activeStage].monthlySpending;
       activeStage += 1;
     }
+    while (activeSalaryStage < salaryStages.length && salaryStages[activeSalaryStage].age <= age) {
+      monthlySalary = salaryStages[activeSalaryStage].monthlySalary;
+      activeSalaryStage += 1;
+    }
 
     const openingBalance = balance;
-    const salary = age < config.retirementAge ? config.monthlySalary : 0;
+    const salary = age < config.retirementAge ? monthlySalary : 0;
     const pension = age >= config.pensionStartAge ? config.monthlyPension : 0;
     const spending = baseSpending * Math.pow(1 + monthlyInflation, index);
     const investmentGain = openingBalance > 0 ? openingBalance * monthlyReturn : 0;
