@@ -518,6 +518,7 @@ async function exportPng() {
   clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
   clone.setAttribute('width', '920');
   clone.setAttribute('height', '276');
+  clone.querySelectorAll('.chart-hover-surface').forEach((surface) => surface.remove());
   const styles = document.createElementNS('http://www.w3.org/2000/svg', 'style');
   styles.textContent = '.grid-line{stroke:#dce6df;stroke-width:1}.zero-grid-line{stroke:#b3c5ba;stroke-width:1.3}.axis-line,.tick-line{stroke:#aabbb2;stroke-width:1}.axis-label,.axis-title{fill:#66776c;font:13px sans-serif}.event-line{stroke:#b1c8b6;stroke-dasharray:5 5}.event-label{fill:#577762;font:12px sans-serif}.selected-line{stroke:#647a69;stroke-dasharray:4 4}.selected-dot{fill:#fff;stroke:#17694d;stroke-width:3}.balance-line{fill:none;stroke:#17694d;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}.income-bar{fill:#3c82ad;fill-opacity:.84}.spending-bar{fill:#ca8840;fill-opacity:.84}.asset-change-bar{fill:#8963a5;fill-opacity:.84}.chart-hit{fill:transparent}';
   clone.insertBefore(styles, clone.firstChild);
