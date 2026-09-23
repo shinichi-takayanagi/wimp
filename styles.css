@@ -125,6 +125,7 @@ a{color:inherit}
 .formula-group-income{flex:3 1 0}
 .formula-group-expense,.cashflow-row>.formula-item{flex:1.2 1 0}
 .formula-group-content>.formula-item{flex:1 1 0}
+.cashflow-row>.formula-item{align-self:flex-end;height:fit-content}
 .detail-item{background:#f5f8f7;border-radius:6px;padding:6px 7px;min-width:0}
 .formula-item{flex:1 1 0}
 .equation-operator{align-self:center;flex:0 0 auto;color:#769186;font-size:14px;font-weight:800;line-height:1}

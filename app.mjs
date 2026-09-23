@@ -48,7 +48,7 @@ function addStageRow(stage) {
 
 function updateStageNumberBadges() {
   [...stagesElement.querySelectorAll('.stage-row')].forEach((row, index) => {
-    row.querySelector('.stage-number').textContent = String(5 + index);
+    row.querySelector('.stage-number').textContent = String(6 + index);
   });
 }
 
@@ -249,7 +249,7 @@ function renderDetails(config, result, rebuild = false) {
     .filter(({ stage }) => stage.age <= year.age)
     .sort((a, b) => a.stage.age - b.stage.age)
     .at(-1)?.index;
-  const spendingReferences = [activeStageIndex === undefined ? 3 : 5 + activeStageIndex];
+  const spendingReferences = [activeStageIndex === undefined ? 4 : 6 + activeStageIndex];
   const balanceFlow = year.investmentGain + year.deposit - year.withdrawal;
   if (rebuild || !detailElements) {
     grid.replaceChildren();
@@ -316,7 +316,7 @@ function renderDetails(config, result, rebuild = false) {
     incomeGroup.append(incomeLabel, incomeItems);
     const salary = makeItem('労働収入', [1]);
     const pension = makeItem('年金収入', [2]);
-    const investmentGain = makeItem('資産運用損益');
+    const investmentGain = makeItem('資産運用損益', [3]);
     incomeItems.append(salary.cell);
     addOperator(incomeItems, '+');
     incomeItems.append(pension.cell);
@@ -342,7 +342,7 @@ function renderDetails(config, result, rebuild = false) {
     expenseGroup.append(expenseLabel, spendingItems);
     cashflowRow.append(expenseGroup);
     addOperator(cashflowRow, '=');
-    const balanceFlowItem = makeItem('収支', [4]);
+    const balanceFlowItem = makeItem('収支', [5]);
     cashflowRow.append(balanceFlowItem.cell);
     makeSubpanel('収支').append(cashflowRow);
 
@@ -350,7 +350,7 @@ function renderDetails(config, result, rebuild = false) {
     assetRow.className = 'formula-row';
     const openingBalance = makeItem('年初残高');
     const closingBalance = makeItem('年末残高', [], true);
-    const assetBalanceFlow = makeItem('収支', [4]);
+    const assetBalanceFlow = makeItem('収支', [5]);
     assetRow.append(openingBalance.cell);
     addOperator(assetRow, '+');
     assetRow.append(assetBalanceFlow.cell);
@@ -363,9 +363,10 @@ function renderDetails(config, result, rebuild = false) {
     };
     setReferences(salary, [1]);
     setReferences(pension, [2]);
+    setReferences(investmentGain, [3]);
     setReferences(spending, spendingReferences);
-    setReferences(balanceFlowItem, [4]);
-    setReferences(assetBalanceFlow, [4]);
+    setReferences(balanceFlowItem, [5]);
+    setReferences(assetBalanceFlow, [5]);
   }
   const setAmount = (item, value) => { item.amount.textContent = formatMan(value); };
   setAmount(detailElements.salary, year.salary);

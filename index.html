@@ -51,12 +51,12 @@
                 <label class="field"><span class="field-label"><span class="field-number" aria-hidden="true">2</span>毎月の年金収入</span><span class="input-wrap"><input name="monthlyPension" type="number" min="0" step="0.1" inputmode="decimal" required /><span class="unit">万円</span></span></label>
                 <label class="field"><span class="field-label">年金受給開始時の年齢</span><span class="input-wrap"><input name="pensionStartAge" type="number" min="60" max="75" step="1" inputmode="numeric" required /><span class="unit">歳</span></span></label>
               </div>
-              <label class="field"><span class="field-label">資産の想定利回り（年率）</span><span class="input-wrap"><input name="annualReturn" type="number" min="-99" max="100" step="0.1" inputmode="decimal" required /><span class="unit">%</span></span></label>
+              <label class="field"><span class="field-label"><span class="field-number" aria-hidden="true">3</span>資産の想定利回り（年率）</span><span class="input-wrap"><input name="annualReturn" type="number" min="-99" max="100" step="0.1" inputmode="decimal" required /><span class="unit">%</span></span></label>
             </section>
 
             <section class="form-section spending-section" aria-labelledby="spending-title">
               <div class="form-section-title"><span class="section-icon">C</span><h3 id="spending-title">支出</h3></div>
-              <label class="field"><span class="field-label"><span class="field-number" aria-hidden="true">3</span>毎月の支出</span><span class="input-wrap"><input name="baseMonthlySpending" type="number" min="0" step="0.1" inputmode="decimal" required /><span class="unit">万円</span></span></label>
+              <label class="field"><span class="field-label"><span class="field-number" aria-hidden="true">4</span>毎月の支出</span><span class="input-wrap"><input name="baseMonthlySpending" type="number" min="0" step="0.1" inputmode="decimal" required /><span class="unit">万円</span></span></label>
               <label class="field"><span class="field-label">インフレ率（年率）</span><span class="input-wrap"><input name="annualInflation" type="number" min="-20" max="50" step="0.1" inputmode="decimal" required /><span class="unit">%</span></span></label>
               <div class="stage-head"><span>支出変化時の年齢</span><span>支出変化後の毎月の支出</span></div>
               <div id="spending-stages" class="stage-list"></div>
