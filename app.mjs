@@ -27,16 +27,16 @@ function addStageRow(stage) {
   row.className = 'stage-row';
   const ageLabel = document.createElement('label');
   ageLabel.className = 'stage-field';
-  ageLabel.innerHTML = '<span class="visually-hidden">支出切替年齢</span><span class="input-wrap"><input class="stage-age" type="number" min="18" max="110" step="1" inputmode="numeric" required aria-label="支出切替年齢"><span class="unit">歳</span></span>';
+  ageLabel.innerHTML = '<span class="visually-hidden">支出の切替年齢</span><span class="input-wrap"><input class="stage-age" type="number" min="18" max="110" step="1" inputmode="numeric" required aria-label="支出の切替年齢"><span class="unit">歳</span></span>';
   ageLabel.querySelector('input').value = stage.age;
   const spendingLabel = document.createElement('label');
   spendingLabel.className = 'stage-field';
-  spendingLabel.innerHTML = '<span class="visually-hidden">切替後の月額支出</span><span class="input-wrap"><input class="stage-spending" type="number" min="0" step="0.1" inputmode="decimal" required aria-label="切替後の月額支出"><span class="unit">万円</span></span>';
+  spendingLabel.innerHTML = '<span class="visually-hidden">切替後の毎月の支出</span><span class="input-wrap"><input class="stage-spending" type="number" min="0" step="0.1" inputmode="decimal" required aria-label="切替後の毎月の支出"><span class="unit">万円</span></span>';
   spendingLabel.querySelector('input').value = toMan(stage.monthlySpending);
   const remove = document.createElement('button');
   remove.className = 'remove-stage';
   remove.type = 'button';
-  remove.setAttribute('aria-label', 'この支出設定を削除');
+  remove.setAttribute('aria-label', 'この支出の設定を削除');
   remove.textContent = '×';
   row.append(ageLabel, spendingLabel, remove);
   stagesElement.append(row);
@@ -165,12 +165,12 @@ function renderChart(config, result) {
     `<line x1="${x(age)}" y1="${bottom}" x2="${x(age)}" y2="${bottom + 6}" class="tick-line"/><text x="${x(age)}" y="${bottom + 24}" text-anchor="middle" class="axis-label">${age}歳</text>`
   ).join('');
   const pensionMarker = config.pensionStartAge > config.currentAge && config.pensionStartAge < config.endAge
-    ? `<line x1="${x(config.pensionStartAge)}" y1="${top}" x2="${x(config.pensionStartAge)}" y2="${bottom}" class="event-line"/><text x="${x(config.pensionStartAge) + 6}" y="${top + 13}" class="event-label">年金受給開始</text>`
+    ? `<line x1="${x(config.pensionStartAge)}" y1="${top}" x2="${x(config.pensionStartAge)}" y2="${bottom}" class="event-line"/><text x="${x(config.pensionStartAge) + 6}" y="${top + 13}" class="event-label">年金の受給開始</text>`
     : '';
   const hitPoints = result.points.slice(0, -1).map((point) =>
     `<circle class="chart-hit" data-age="${point.age}" cx="${x(point.age)}" cy="${y(point.balance)}" r="11"><title>${point.age}歳時点の金融資産残高 ${formatMan(point.balance)}</title></circle>`
   ).join('');
-  chart.innerHTML = `<title id="chart-title">年齢ごとの金融資産残高</title><desc id="chart-desc">${config.currentAge}歳から${config.endAge}歳までの試算。</desc><defs><linearGradient id="asset-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#93c59c" stop-opacity=".42"/><stop offset="100%" stop-color="#93c59c" stop-opacity=".02"/></linearGradient></defs>${grids}${pensionMarker}<path d="${area}" fill="url(#asset-fill)"/><path d="${balanceLine}" class="balance-line"/>${hitPoints}<g id="selected-mark">${selectedMarkMarkup(config, result, selectedAge)}</g><line x1="${left}" y1="${bottom}" x2="${right}" y2="${bottom}" class="axis-line"/>${ticks}<text x="${left}" y="18" class="axis-title">万円</text>`;
+  chart.innerHTML = `<title id="chart-title">年齢ごとの金融資産残高</title><desc id="chart-desc">${config.currentAge}歳から${config.endAge}歳までの金融資産残高を示します。</desc><defs><linearGradient id="asset-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#93c59c" stop-opacity=".42"/><stop offset="100%" stop-color="#93c59c" stop-opacity=".02"/></linearGradient></defs>${grids}${pensionMarker}<path d="${area}" fill="url(#asset-fill)"/><path d="${balanceLine}" class="balance-line"/>${hitPoints}<g id="selected-mark">${selectedMarkMarkup(config, result, selectedAge)}</g><line x1="${left}" y1="${bottom}" x2="${right}" y2="${bottom}" class="axis-line"/>${ticks}<text x="${left}" y="18" class="axis-title">万円</text>`;
 }
 
 function renderAgeSelect(config) {
@@ -217,14 +217,14 @@ function renderDetails(result) {
     grid.append(row);
   };
   addFormula([
-    { label: '給与等収入', value: year.salary },
-    { label: '年金収入', value: year.pension, operator: '+' },
-    { label: '年間支出', value: year.spending, operator: '−' },
-    { label: '年間収支', value: year.salary + year.pension - year.spending, operator: '=' },
+    { label: '年間の労働収入', value: year.salary },
+    { label: '年間の年金収入', value: year.pension, operator: '+' },
+    { label: '年間の支出', value: year.spending, operator: '−' },
+    { label: '年間の収支', value: year.salary + year.pension - year.spending, operator: '=' },
   ]);
   addFormula([
     { label: '年初の金融資産', value: year.openingBalance },
-    { label: '運用損益', value: year.investmentGain, operator: '+' },
+    { label: '金融資産の運用損益', value: year.investmentGain, operator: '+' },
     { label: '金融資産への積立', value: year.deposit, operator: '+' },
     { label: '金融資産の取崩し', value: year.withdrawal, operator: '−' },
     { label: '年末の金融資産', value: year.closingBalance, operator: '=', emphasis: true },
@@ -287,7 +287,7 @@ function downloadBlob(blob, filename) {
 
 function exportCsv() {
   if (!latestResult) return;
-  const headers = ['経過月', '年齢', '年齢内経過月', '月初金融資産_円', '給与等収入_円', '年金収入_円', '月額支出_円', '運用損益_円', '金融資産への積立_円', '金融資産の取崩し_円', '不足額_円', '月末金融資産_円'];
+  const headers = ['経過月', '年齢', '年齢内経過月', '月初の金融資産_円', '労働収入_円', '年金収入_円', '毎月の支出_円', '金融資産の運用損益_円', '金融資産への積立_円', '金融資産の取崩し_円', '不足額_円', '月末の金融資産_円'];
   const rows = latestResult.months.map((month) => [
     month.elapsedMonth, month.age, month.monthOfAge + 1,
     month.openingBalance, month.salary, month.pension, month.spending,
@@ -327,7 +327,7 @@ async function exportPng() {
     downloadBlob(pngBlob, 'wimp-asset-projection.png');
   } catch {
     if (errorElement) {
-      errorElement.textContent = 'PNG出力に失敗しました';
+      errorElement.textContent = 'PNG画像を作成できませんでした。';
       errorElement.hidden = false;
     }
   } finally {
@@ -348,7 +348,7 @@ document.querySelector('#add-stage').addEventListener('click', () => {
   const nextAge = candidates.find((age) => age >= preferredAge) ?? candidates.at(-1);
   if (nextAge === undefined) {
     if (errorElement) {
-      errorElement.textContent = '追加できる年齢がありません。既存の支出切替年齢を編集してください。';
+      errorElement.textContent = '追加できる年齢がありません。登録済みの支出の切替年齢を変更してください。';
       errorElement.hidden = false;
     }
     return;

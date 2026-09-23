@@ -27,32 +27,32 @@ export function validateConfig(config) {
   };
 
   integer('currentAge', 18, 100, '現在の年齢');
-  integer('endAge', 19, 110, '試算終了年齢');
+  integer('endAge', 19, 110, '試算終了時の年齢');
   if (config.endAge <= config.currentAge) {
-    throw new Error('試算終了年齢は、現在の年齢より大きい値にしてください。');
+    throw new Error('試算終了時の年齢は、現在の年齢より大きい値にしてください。');
   }
   number('startingAssets', 0, 1e12, '現在の金融資産');
   number('annualReturn', -99, 100, '想定利回り');
   number('annualInflation', -20, 50, 'インフレ率');
-  number('monthlySalary', 0, 1e10, '毎月の給与等収入');
-  integer('retirementAge', 18, 110, '収入終了年齢');
-  integer('pensionStartAge', 60, 75, '年金受給開始年齢');
+  number('monthlySalary', 0, 1e10, '毎月の労働収入');
+  integer('retirementAge', 18, 110, '収入終了時の年齢');
+  integer('pensionStartAge', 60, 75, '年金の受給開始年齢');
   number('monthlyPension', 0, 1e10, '毎月の年金収入');
-  number('baseMonthlySpending', 0, 1e10, '現在の月額支出');
+  number('baseMonthlySpending', 0, 1e10, '毎月の支出');
 
   if (!Array.isArray(config.spendingStages) || config.spendingStages.length > 30) {
-    throw new Error('支出設定は30件以内にしてください。');
+    throw new Error('支出の設定は30件以内にしてください。');
   }
   const ages = new Set();
   for (const stage of config.spendingStages) {
     if (!Number.isInteger(stage.age) || stage.age < 18 || stage.age > 110) {
-      throw new Error('支出切替年齢は18〜110歳の整数で入力してください。');
+      throw new Error('支出の切替年齢は18〜110歳の整数で入力してください。');
     }
     if (!isFiniteNumber(stage.monthlySpending) || stage.monthlySpending < 0 || stage.monthlySpending > 1e10) {
-      throw new Error('切替後の月額支出は0以上で入力してください。');
+      throw new Error('切替後の毎月の支出は0以上で入力してください。');
     }
     if (ages.has(stage.age)) {
-      throw new Error('同じ年齢の支出設定が重複しています。');
+      throw new Error('同じ年齢の支出の設定が重複しています。');
     }
     ages.add(stage.age);
   }

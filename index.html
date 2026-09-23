@@ -4,8 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#103e35" />
-    <meta name="description" content="年齢ごとの月額支出、収入、年金を反映する金融資産シミュレーター" />
-    <title>WIMP | 金融資産シミュレーター</title>
+    <meta name="description" content="毎月の支出、労働収入、年金収入、想定利回りを反映する資産寿命シミュレータ" />
+    <title>WIMP｜資産寿命シミュレータ</title>
     <link rel="stylesheet" href="./styles.css" />
     <script type="module" src="./app.mjs"></script>
   </head>
@@ -20,7 +20,7 @@
           </svg>
           <span class="brand-name">WIMP</span>
         </a>
-        <span class="header-caption">Wealth, Income &amp; Money-flow Projection</span>
+        <span class="header-caption">Wealth, Income &amp; Money-flow Projection <span lang="ja">（資産寿命シミュレータ）</span></span>
       </div>
     </header>
 
@@ -36,7 +36,7 @@
               <div class="form-section-title"><span class="section-icon">01</span><h3 id="basic-title">基本情報</h3></div>
               <div class="field-grid two-col">
                 <label class="field"><span>現在の年齢</span><span class="input-wrap"><input name="currentAge" type="number" min="18" max="100" step="1" inputmode="numeric" required /><span class="unit">歳</span></span></label>
-                <label class="field"><span>試算終了年齢</span><span class="input-wrap"><input name="endAge" type="number" min="19" max="110" step="1" inputmode="numeric" required /><span class="unit">歳</span></span></label>
+                <label class="field"><span>試算終了時の年齢</span><span class="input-wrap"><input name="endAge" type="number" min="19" max="110" step="1" inputmode="numeric" required /><span class="unit">歳</span></span></label>
               </div>
               <div class="field-grid two-col">
                 <label class="field"><span>現在の金融資産</span><span class="input-wrap"><input name="startingAssets" type="number" min="0" step="0.1" inputmode="decimal" required /><span class="unit">万円</span></span></label>
@@ -46,23 +46,23 @@
             </section>
 
             <section class="form-section" aria-labelledby="income-title">
-              <div class="form-section-title"><span class="section-icon">02</span><h3 id="income-title">収入・年金</h3></div>
+              <div class="form-section-title"><span class="section-icon">02</span><h3 id="income-title">収入</h3></div>
               <div class="field-grid two-col">
-                <label class="field"><span>毎月の給与等収入</span><span class="input-wrap"><input name="monthlySalary" type="number" min="0" step="0.1" inputmode="decimal" required /><span class="unit">万円</span></span></label>
-                <label class="field"><span>収入終了年齢</span><span class="input-wrap"><input name="retirementAge" type="number" min="18" max="110" step="1" inputmode="numeric" required /><span class="unit">歳</span></span></label>
+                <label class="field"><span>毎月の労働収入</span><span class="input-wrap"><input name="monthlySalary" type="number" min="0" step="0.1" inputmode="decimal" required /><span class="unit">万円</span></span></label>
+                <label class="field"><span>収入終了時の年齢</span><span class="input-wrap"><input name="retirementAge" type="number" min="18" max="110" step="1" inputmode="numeric" required /><span class="unit">歳</span></span></label>
               </div>
               <div class="field-grid two-col">
                 <label class="field"><span>毎月の年金収入</span><span class="input-wrap"><input name="monthlyPension" type="number" min="0" step="0.1" inputmode="decimal" required /><span class="unit">万円</span></span></label>
-                <label class="field"><span>年金受給開始年齢</span><span class="input-wrap"><input name="pensionStartAge" type="number" min="60" max="75" step="1" inputmode="numeric" required /><span class="unit">歳</span></span></label>
+                <label class="field"><span>年金の受給開始年齢</span><span class="input-wrap"><input name="pensionStartAge" type="number" min="60" max="75" step="1" inputmode="numeric" required /><span class="unit">歳</span></span></label>
               </div>
             </section>
 
             <section class="form-section spending-section" aria-labelledby="spending-title">
-              <div class="form-section-title"><span class="section-icon">03</span><h3 id="spending-title">年齢ごとの月額支出</h3></div>
-              <label class="field"><span>現在の月額支出</span><span class="input-wrap"><input name="baseMonthlySpending" type="number" min="0" step="0.1" inputmode="decimal" required /><span class="unit">万円</span></span></label>
-              <div class="stage-head"><span>切替年齢</span><span>切替後の月額支出</span></div>
+              <div class="form-section-title"><span class="section-icon">03</span><h3 id="spending-title">支出</h3></div>
+              <label class="field"><span>毎月の支出</span><span class="input-wrap"><input name="baseMonthlySpending" type="number" min="0" step="0.1" inputmode="decimal" required /><span class="unit">万円</span></span></label>
+              <div class="stage-head"><span>支出の切替年齢</span><span>切替後の毎月の支出</span></div>
               <div id="spending-stages" class="stage-list"></div>
-              <button id="add-stage" class="add-button" type="button"><span aria-hidden="true">＋</span> 支出設定を追加</button>
+              <button id="add-stage" class="add-button" type="button"><span aria-hidden="true">＋</span> 支出の設定を追加</button>
             </section>
           </form>
           <p id="form-error" class="form-error" role="alert" hidden></p>
@@ -74,19 +74,19 @@
           </div>
           <div class="metrics" aria-label="主な試算結果">
             <article class="metric metric-primary"><span class="metric-label">試算終了時の金融資産</span><strong id="ending-balance">—</strong></article>
-            <article class="metric"><span class="metric-label">資金が不足し始める時期</span><strong id="shortfall-age">—</strong></article>
+            <article class="metric"><span class="metric-label">金融資産が尽きる時期</span><strong id="shortfall-age">—</strong></article>
           </div>
 
           <div class="chart-card">
               <div class="chart-header">
-                <div><h3>金融資産残高の推移</h3><p>各年齢時点の金融資産残高 / 万円</p></div>
+                <div><h3>金融資産残高の推移</h3><p>年齢ごとの金融資産残高（万円）</p></div>
               <div class="chart-tools">
                 <div class="chart-legend"><span><i class="legend-green"></i> 金融資産残高</span></div>
                 <div class="download-actions"><button id="download-csv" type="button" class="button button-primary">CSV ↓</button><button id="download-png" type="button" class="button button-secondary">PNG ↓</button></div>
               </div>
             </div>
-            <div class="chart-scroll"><svg id="projection-chart" viewBox="0 0 920 276" role="img" aria-labelledby="chart-title chart-desc"><title id="chart-title">年齢ごとの金融資産残高</title><desc id="chart-desc">入力条件を変更するとグラフが更新されます。</desc></svg></div>
-            <div class="chart-footer"><span>表示年齢</span><label class="age-picker"><select id="age-select" aria-label="詳細を表示する年齢"></select></label></div>
+            <div class="chart-scroll"><svg id="projection-chart" viewBox="0 0 920 276" role="img" aria-labelledby="chart-title chart-desc"><title id="chart-title">年齢ごとの金融資産残高</title><desc id="chart-desc">現在の年齢から試算終了時の年齢までの金融資産残高を示します。</desc></svg></div>
+            <div class="chart-footer"><span>内訳を表示する年齢</span><label class="age-picker"><select id="age-select" aria-label="内訳を表示する年齢"></select></label></div>
           </div>
 
           <div class="detail-card">
