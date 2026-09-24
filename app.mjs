@@ -36,7 +36,7 @@ function addStageRow(stage) {
   ageLabel.querySelector('input').value = stage.age;
   const spendingLabel = document.createElement('label');
   spendingLabel.className = 'stage-field';
-  spendingLabel.innerHTML = '<span class="input-wrap"><span class="field-number stage-number" aria-hidden="true"></span><input class="stage-spending" type="number" min="0" step="0.1" inputmode="decimal" required aria-label="支出変化後の毎月の支出"><span class="unit">万円</span></span>';
+  spendingLabel.innerHTML = '<span class="input-wrap"><span class="field-number stage-number" aria-hidden="true"></span><input class="stage-spending" type="number" min="0" step="0.1" inputmode="decimal" required aria-label="変化後の支出（月額）"><span class="unit">万円</span></span>';
   spendingLabel.querySelector('input').value = toMan(stage.monthlySpending);
   const remove = document.createElement('button');
   remove.className = 'remove-stage';
@@ -57,7 +57,7 @@ function addSalaryStageRow(stage) {
   ageLabel.querySelector('input').value = stage.age;
   const salaryLabel = document.createElement('label');
   salaryLabel.className = 'stage-field';
-  salaryLabel.innerHTML = '<span class="input-wrap"><input class="salary-stage-amount" type="number" min="0" step="0.1" inputmode="decimal" required aria-label="労働収入変化後の毎月の労働収入"><span class="unit">万円</span></span>';
+  salaryLabel.innerHTML = '<span class="input-wrap"><input class="salary-stage-amount" type="number" min="0" step="0.1" inputmode="decimal" required aria-label="変化後の労働収入（月額）"><span class="unit">万円</span></span>';
   salaryLabel.querySelector('input').value = toMan(stage.monthlySalary);
   const remove = document.createElement('button');
   remove.className = 'remove-stage';
@@ -211,7 +211,7 @@ function balanceScale(result, top, bottom, zeroY) {
 }
 
 function selectedMarkMarkup(config, result, age) {
-  const left = 76, right = 822, top = 22, bottom = 212;
+  const left = 76, right = 822, top = 22, bottom = 260;
   const { zeroY } = flowScale(result, top, bottom);
   const { y: balanceY } = balanceScale(result, top, bottom, zeroY);
   const x = left + ((age - config.currentAge) / (config.endAge - config.currentAge)) * (right - left);
@@ -222,7 +222,7 @@ function selectedMarkMarkup(config, result, age) {
 }
 
 function renderChart(config, result) {
-  const left = 76, right = 822, top = 22, bottom = 212;
+  const left = 76, right = 822, top = 22, bottom = 260;
   const { annualFlows, flowMin, flowMax, flowY, zeroY } = flowScale(result, top, bottom);
   const { y: balanceY, valueAtY: balanceValueAtY } = balanceScale(result, top, bottom, zeroY);
   const x = (age) => left + ((age - config.currentAge) / (config.endAge - config.currentAge)) * (right - left);
@@ -544,13 +544,13 @@ async function exportPng() {
   const clone = chart.cloneNode(true);
   clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
   clone.setAttribute('width', '920');
-  clone.setAttribute('height', '276');
+  clone.setAttribute('height', '320');
   clone.querySelectorAll('.chart-hover-surface').forEach((surface) => surface.remove());
   const styles = document.createElementNS('http://www.w3.org/2000/svg', 'style');
   styles.textContent = '.grid-line{stroke:#dce6df;stroke-width:1}.zero-grid-line{stroke:#b3c5ba;stroke-width:1.3}.axis-line,.tick-line{stroke:#aabbb2;stroke-width:1}.axis-label,.axis-title{fill:#66776c;font:13px sans-serif}.event-line{stroke:#b1c8b6;stroke-dasharray:5 5}.event-label{fill:#577762;font:12px sans-serif}.selected-line{stroke:#647a69;stroke-dasharray:4 4}.selected-dot{fill:#fff;stroke:#17694d;stroke-width:3}.balance-line{fill:none;stroke:#17694d;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}.income-bar{fill:#3c82ad;fill-opacity:.84}.spending-bar{fill:#ca8840;fill-opacity:.84}.asset-change-bar{fill:#8963a5;fill-opacity:.84}.chart-hit{fill:transparent}';
   clone.insertBefore(styles, clone.firstChild);
   const legend = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-  legend.innerHTML = '<line x1="100" y1="263" x2="116" y2="263" stroke="#17694d" stroke-width="4"/><text x="122" y="267" fill="#466656" font-size="11" font-family="sans-serif">資産残高</text><rect x="260" y="259" width="8" height="8" rx="2" fill="#3c82ad"/><text x="274" y="267" fill="#466656" font-size="11" font-family="sans-serif">収入</text><rect x="340" y="259" width="8" height="8" rx="2" fill="#ca8840"/><text x="354" y="267" fill="#466656" font-size="11" font-family="sans-serif">支出</text><rect x="420" y="259" width="8" height="8" rx="2" fill="#8963a5"/><text x="434" y="267" fill="#466656" font-size="11" font-family="sans-serif">収支</text>';
+  legend.innerHTML = '<line x1="100" y1="307" x2="116" y2="307" stroke="#17694d" stroke-width="4"/><text x="122" y="311" fill="#466656" font-size="11" font-family="sans-serif">資産残高</text><rect x="260" y="303" width="8" height="8" rx="2" fill="#3c82ad"/><text x="274" y="311" fill="#466656" font-size="11" font-family="sans-serif">収入</text><rect x="340" y="303" width="8" height="8" rx="2" fill="#ca8840"/><text x="354" y="311" fill="#466656" font-size="11" font-family="sans-serif">支出</text><rect x="420" y="303" width="8" height="8" rx="2" fill="#8963a5"/><text x="434" y="311" fill="#466656" font-size="11" font-family="sans-serif">収支</text>';
   clone.append(legend);
   const svgBlob = new Blob([new XMLSerializer().serializeToString(clone)], { type: 'image/svg+xml;charset=utf-8' });
   const url = URL.createObjectURL(svgBlob);
@@ -560,7 +560,7 @@ async function exportPng() {
     await image.decode();
     const canvas = document.createElement('canvas');
     canvas.width = 1840;
-    canvas.height = 552;
+    canvas.height = 640;
     const context = canvas.getContext('2d');
     context.fillStyle = '#ffffff';
     context.fillRect(0, 0, canvas.width, canvas.height);
