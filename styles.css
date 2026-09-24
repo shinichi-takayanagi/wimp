@@ -150,8 +150,7 @@ a{color:inherit}
 }
 @media(max-width:720px){
   .cashflow-row{display:flex;flex-direction:column;align-items:stretch;gap:7px}
-  .cashflow-row>.equation-operator,.income-range>.equation-operator{display:none}
   .formula-group-content.income-range{display:grid;grid-template-columns:minmax(0,1fr);gap:5px}
   .detail-subpanel .formula-row:not(.cashflow-row){display:grid;grid-template-columns:minmax(0,1fr);gap:6px}
-  .detail-subpanel .formula-row:not(.cashflow-row)>.equation-operator{display:none}
+  .cashflow-row>.formula-item{align-self:stretch}
 }
