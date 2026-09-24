@@ -153,4 +153,5 @@ a{color:inherit}
   .formula-group-content.income-range{display:grid;grid-template-columns:minmax(0,1fr);gap:5px}
   .detail-subpanel .formula-row:not(.cashflow-row){display:grid;grid-template-columns:minmax(0,1fr);gap:6px}
   .cashflow-row>.formula-item{align-self:stretch}
+  .detail-grid .equation-operator{align-self:flex-start;justify-self:start;text-align:left}
 }
