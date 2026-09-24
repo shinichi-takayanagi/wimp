@@ -35,7 +35,7 @@ export function validateConfig(config) {
   number('startingAssets', 0, 1e12, '現在の資産');
   number('annualReturn', -99, 100, '資産の想定利回り（年率）');
   number('annualInflation', -20, 50, 'インフレ率（年率）');
-  number('monthlySalary', 0, 1e10, '毎月の労働収入');
+  number('monthlySalary', 0, 1e10, '現在の労働収入（月額）');
   integer('retirementAge', 18, 110, '労働収入の終了年齢');
   if (!Array.isArray(config.salaryStages) || config.salaryStages.length > 30) {
     throw new Error('労働収入の設定は30件以内にしてください。');
@@ -46,7 +46,7 @@ export function validateConfig(config) {
       throw new Error('労働収入の切替年齢は18〜110歳の整数で入力してください。');
     }
     if (!isFiniteNumber(stage.monthlySalary) || stage.monthlySalary < 0 || stage.monthlySalary > 1e10) {
-      throw new Error('切替後の毎月の労働収入は0以上で入力してください。');
+      throw new Error('変化後の労働収入（月額）は0以上で入力してください。');
     }
     if (salaryAges.has(stage.age)) {
       throw new Error('同じ年齢の労働収入の設定が重複しています。');
@@ -54,8 +54,8 @@ export function validateConfig(config) {
     salaryAges.add(stage.age);
   }
   integer('pensionStartAge', 60, 75, '年金受給開始年齢');
-  number('monthlyPension', 0, 1e10, '毎月の年金収入');
-  number('baseMonthlySpending', 0, 1e10, '毎月の支出');
+  number('monthlyPension', 0, 1e10, '現在の年金収入（月額）');
+  number('baseMonthlySpending', 0, 1e10, '現在の支出（月額）');
 
   if (!Array.isArray(config.spendingStages) || config.spendingStages.length > 30) {
     throw new Error('支出の設定は30件以内にしてください。');
@@ -66,7 +66,7 @@ export function validateConfig(config) {
       throw new Error('支出の切替年齢は18〜110歳の整数で入力してください。');
     }
     if (!isFiniteNumber(stage.monthlySpending) || stage.monthlySpending < 0 || stage.monthlySpending > 1e10) {
-      throw new Error('切替後の毎月の支出は0以上で入力してください。');
+      throw new Error('変化後の支出（月額）は0以上で入力してください。');
     }
     if (ages.has(stage.age)) {
       throw new Error('同じ年齢の支出の設定が重複しています。');

@@ -140,3 +140,18 @@ a{color:inherit}
 @media(max-width:1200px){.workspace{grid-template-columns:minmax(270px,310px) minmax(0,1fr);gap:12px}.result-panel{padding:0 13px 13px}.chart-tools{gap:8px}.chart-legend{gap:7px}.formula-row{gap:3px}.detail-grid{grid-template-columns:1fr}.detail-item{padding:6px 5px}}
 @media(max-width:720px){.shell,.header-inner{width:min(100% - 28px,560px)}.header-inner{height:auto;min-height:38px;padding-block:5px;gap:8px}.brand{flex:0 0 auto}.header-caption{display:block;min-width:0;font-size:9px;line-height:1.35;letter-spacing:0}.header-caption [lang=ja]{white-space:nowrap}.workspace{grid-template-columns:1fr;gap:12px;padding-top:10px}.input-panel,.result-panel{border-radius:11px}.result-panel{padding:0 13px 13px}.result-heading{border-radius:11px 11px 0 0}.metrics{gap:6px}.metric{padding:10px 8px}.metric-label{font-size:8px}.metric strong{font-size:16px}.chart-header{align-items:flex-start}.chart-tools{display:grid;justify-items:end;gap:6px}.chart-legend{font-size:8px}.detail-item strong{font-size:10px}.equation-operator{font-size:12px}}
 @media(max-width:440px){.chart-header{display:block}.chart-tools{display:flex;justify-content:space-between;margin-top:8px}.chart-legend{gap:8px}.formula-row{gap:2px}.detail-item{padding:5px 4px}.detail-label-line{font-size:8px}.reference-inline{font-size:6px}.detail-item strong{font-size:12px}.equation-operator{font-size:11px}.detail-head{align-items:flex-start}.age-picker{display:grid;justify-items:end;gap:3px}}
+
+/* Keep adjacent form groups distinct and leave room for longer monthly labels. */
+.add-button{margin-bottom:10px}
+.form-section[aria-labelledby="income-title"]>.field:last-child,
+.spending-section>.field+.field{margin-top:12px}
+@media(max-width:440px){
+  .two-col{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:720px){
+  .cashflow-row{display:flex;flex-direction:column;align-items:stretch;gap:7px}
+  .cashflow-row>.equation-operator,.income-range>.equation-operator{display:none}
+  .formula-group-content.income-range{display:grid;grid-template-columns:minmax(0,1fr);gap:5px}
+  .detail-subpanel .formula-row:not(.cashflow-row){display:grid;grid-template-columns:minmax(0,1fr);gap:6px}
+  .detail-subpanel .formula-row:not(.cashflow-row)>.equation-operator{display:none}
+}
