@@ -151,6 +151,7 @@ test('年金収入は設定年齢から毎月の支出を相殺する', () => {
   const result = simulate(config({
     currentAge: 64,
     endAge: 66,
+    salaryStages: [],
     pensionStartAge: 65,
     monthlyPension: 50_000,
     baseMonthlySpending: 100_000,
