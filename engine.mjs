@@ -52,7 +52,7 @@ export function validateConfig(config) {
     salaryAges.add(stage.age);
   }
   integer('pensionStartAge', 60, 75, '年金受給開始年齢');
-  number('monthlyPension', 0, 1e10, '現在の年金収入（月額）');
+  number('monthlyPension', 0, 1e10, '年金収入（月額）');
   number('baseMonthlySpending', 0, 1e10, '現在の支出（月額）');
 
   if (!Array.isArray(config.spendingStages) || config.spendingStages.length > 30) {
