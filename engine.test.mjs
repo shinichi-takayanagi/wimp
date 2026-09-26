@@ -10,7 +10,6 @@ const config = (overrides = {}) => ({
   annualReturn: 0,
   annualInflation: 0,
   monthlySalary: 0,
-  retirementAge: 60,
   pensionStartAge: 65,
   monthlyPension: 0,
   baseMonthlySpending: 0,
@@ -48,12 +47,11 @@ test('労働収入の切替は設定年齢の最初の月から月次収支へ�
   assert.equal(result.endingBalance, 600_000);
 });
 
-test('労働収入の複数切替は年齢順に適用し、退職後は収入を止める', () => {
+test('労働収入の複数切替は年齢順に適用し、次の変更まで維持する', () => {
   const result = simulate(config({
     currentAge: 58,
     endAge: 63,
     monthlySalary: 300_000,
-    retirementAge: 61,
     salaryStages: [
       { age: 60, monthlySalary: 200_000 },
       { age: 59, monthlySalary: 250_000 },
@@ -64,11 +62,11 @@ test('労働収入の複数切替は年齢順に適用し、退職後は収入�
   assert.equal(result.months[12].salary, 250_000);
   assert.equal(result.months[24].salary, 200_000);
   assert.equal(result.months[35].salary, 200_000);
-  assert.equal(result.months[36].salary, 0);
+  assert.equal(result.months[36].salary, 200_000);
   assert.equal(result.years[0].salary, 3_600_000);
   assert.equal(result.years[1].salary, 3_000_000);
   assert.equal(result.years[2].salary, 2_400_000);
-  assert.equal(result.years[3].salary, 0);
+  assert.equal(result.years[3].salary, 2_400_000);
 });
 
 test('年利を実効月利に変換して複利運用する', () => {

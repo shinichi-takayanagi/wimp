@@ -79,7 +79,7 @@ function updateStageNumberBadges() {
 }
 
 function populateForm(config) {
-  for (const key of ['currentAge', 'endAge', 'annualReturn', 'annualInflation', 'retirementAge', 'pensionStartAge']) {
+  for (const key of ['currentAge', 'endAge', 'annualReturn', 'annualInflation', 'pensionStartAge']) {
     setField(key, config[key]);
   }
   for (const key of ['startingAssets', 'monthlySalary', 'monthlyPension', 'baseMonthlySpending']) {
@@ -104,7 +104,6 @@ function readConfig() {
       age: inputNumber(row.querySelector('.salary-stage-age').value),
       monthlySalary: inputNumber(row.querySelector('.salary-stage-amount').value) * 10000,
     })),
-    retirementAge: value('retirementAge'),
     pensionStartAge: value('pensionStartAge'),
     monthlyPension: value('monthlyPension') * 10000,
     baseMonthlySpending: value('baseMonthlySpending') * 10000,
@@ -154,6 +153,19 @@ function applyNewDefaultsToPreviousDefaults(config, migrateSalaryStages = false)
   if ([previousStages, earlierSingleStage].some((stages) =>
     JSON.stringify(config.spendingStages) === JSON.stringify(stages))) {
     config.spendingStages = DEFAULT_CONFIG.spendingStages.map((stage) => ({ ...stage }));
+  }
+  if (config.retirementAge !== undefined) {
+    const previousSalaryDefault = [{ age: 55, monthlySalary: 350000 }];
+    if (JSON.stringify(config.salaryStages) === JSON.stringify(previousSalaryDefault)) {
+      config.salaryStages = DEFAULT_CONFIG.salaryStages.map((stage) => ({ ...stage }));
+    } else if (config.retirementAge <= config.currentAge) {
+      config.monthlySalary = 0;
+      config.salaryStages = [];
+    } else {
+      config.salaryStages = config.salaryStages.filter((stage) => stage.age < config.retirementAge);
+      config.salaryStages.push({ age: config.retirementAge, monthlySalary: 0 });
+    }
+    delete config.retirementAge;
   }
   return config;
 }
@@ -497,7 +509,7 @@ function update() {
     latestConfig = config;
     latestResult = result;
     if (selectedAge === null || selectedAge < config.currentAge || selectedAge > config.endAge) {
-      selectedAge = Math.min(config.endAge - 1, Math.max(config.currentAge, 65));
+      selectedAge = Math.min(config.endAge, Math.max(config.currentAge, config.pensionStartAge));
     }
     errorElement.hidden = true;
     for (const button of downloadButtons) button.disabled = false;

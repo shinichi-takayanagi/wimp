@@ -5,8 +5,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   annualReturn: 4,
   annualInflation: 2,
   monthlySalary: 350000,
-  salaryStages: [{ age: 55, monthlySalary: 350000 }],
-  retirementAge: 60,
+  salaryStages: [{ age: 60, monthlySalary: 200000 }],
   pensionStartAge: 65,
   monthlyPension: 100000,
   baseMonthlySpending: 350000,
@@ -36,7 +35,6 @@ export function validateConfig(config) {
   number('annualReturn', -99, 100, '資産の想定利回り（年率）');
   number('annualInflation', -20, 50, 'インフレ率（年率）');
   number('monthlySalary', 0, 1e10, '現在の労働収入（月額）');
-  integer('retirementAge', 18, 110, '労働収入の終了年齢');
   if (!Array.isArray(config.salaryStages) || config.salaryStages.length > 30) {
     throw new Error('労働収入の設定は30件以内にしてください。');
   }
@@ -106,7 +104,7 @@ export function simulate(config) {
     }
 
     const openingBalance = balance;
-    const salary = age < config.retirementAge ? monthlySalary : 0;
+    const salary = monthlySalary;
     const pension = age >= config.pensionStartAge ? config.monthlyPension : 0;
     const spending = baseSpending * Math.pow(1 + monthlyInflation, index);
     const investmentGain = openingBalance > 0 ? openingBalance * monthlyReturn : 0;
