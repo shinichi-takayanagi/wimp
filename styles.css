@@ -64,7 +64,7 @@ a{color:inherit}
 .metric-primary .metric-label{color:#718477}
 .metric strong{display:block;font-size:clamp(15px,1.6vw,22px);letter-spacing:-.025em;line-height:1.15;white-space:nowrap;font-variant-numeric:tabular-nums}
 .chart-card,.detail-card{border:1px solid #dfe8ed;border-radius:10px;background:#fff}
-.chart-card{padding:6px 10px 5px}
+.chart-card{padding:6px 10px 3px}
 .chart-header{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .chart-header h3{margin:0;color:#1b4035;font-size:14px}
 .chart-header p{margin:3px 0 0;color:#96a39a;font-size:9px}
@@ -101,7 +101,7 @@ a{color:inherit}
 .chart-footer{display:flex;justify-content:space-between;align-items:center;border-top:1px solid #edf0ea;padding-top:5px;color:#789081;font-size:9px}
 .age-picker{color:#587262;font-weight:800;white-space:nowrap}
 .age-picker select{border:1px solid #d6e1d8;border-radius:5px;color:#1e4a39;background:#fff;padding:5px 8px;font-size:12px;font-weight:700}
-.detail-card{margin-top:5px;padding:5px 8px}
+.detail-card{margin-top:3px;padding:5px 8px}
 .detail-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:5px}
 .detail-title-group{display:flex;align-items:center;gap:8px;min-width:0}
 .detail-head h3{margin:0;color:#1b4035;font-size:14px}
