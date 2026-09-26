@@ -196,7 +196,7 @@ function niceMaximum(value) {
 function flowScale(result, top, bottom) {
   const annualFlows = result.years.map((year) => ({
     ...year,
-    income: year.salary + year.pension,
+    income: year.salary + year.pension + year.investmentGain,
     assetChange: year.closingBalance - year.openingBalance,
   }));
   const flowMinimum = Math.min(0, ...annualFlows.map((year) => year.assetChange));
@@ -219,7 +219,7 @@ function balanceScale(result, top, bottom, zeroY) {
   const valueAtY = (position) => position <= zeroY
     ? (positiveRange ? ((zeroY - position) / (zeroY - top)) * positiveRange : 0)
     : (negativeRange ? -((position - zeroY) / (bottom - zeroY)) * negativeRange : 0);
-  return { y, valueAtY };
+  return { y, valueAtY, positiveRange, negativeRange };
 }
 
 function selectedMarkMarkup(config, result, age) {
@@ -236,7 +236,12 @@ function selectedMarkMarkup(config, result, age) {
 function renderChart(config, result) {
   const left = 76, right = 822, top = 22, bottom = 260;
   const { annualFlows, flowMin, flowMax, flowY, zeroY } = flowScale(result, top, bottom);
-  const { y: balanceY, valueAtY: balanceValueAtY } = balanceScale(result, top, bottom, zeroY);
+  const {
+    y: balanceY,
+    valueAtY: balanceValueAtY,
+    positiveRange: balancePositiveRange,
+    negativeRange: balanceNegativeRange,
+  } = balanceScale(result, top, bottom, zeroY);
   const x = (age) => left + ((age - config.currentAge) / (config.endAge - config.currentAge)) * (right - left);
   const balanceLine = result.points.map((point, index) => `${index ? 'L' : 'M'}${x(point.age).toFixed(2)} ${balanceY(point.balance).toFixed(2)}`).join(' ');
   const area = `${balanceLine} L${right} ${zeroY} L${left} ${zeroY} Z`;
@@ -255,14 +260,27 @@ function renderChart(config, result) {
     const barY = Math.min(zeroY, valueY);
     return `<rect class="${className}" x="${barX.toFixed(2)}" y="${barY.toFixed(2)}" width="${barWidth.toFixed(2)}" height="${barHeight.toFixed(2)}" rx=".8"/>`;
   }).join('')).join('');
-  const balanceTicks = [top, (top + zeroY) / 2, zeroY, (zeroY + bottom) / 2, bottom];
-  const grids = balanceTicks.map((gridY, index) => {
+  const balanceTicks = [
+    ...(balancePositiveRange ? [top, (top + zeroY) / 2] : []),
+    zeroY,
+    ...(balanceNegativeRange ? [(zeroY + bottom) / 2, bottom] : []),
+  ];
+  const zeroLabel = moneyFormatter.format(0);
+  const seenBalanceLabels = new Set();
+  const grids = balanceTicks.map((gridY) => {
     const value = balanceValueAtY(gridY);
-    return `<line x1="${left}" y1="${gridY}" x2="${right}" y2="${gridY}" class="${index === 2 ? 'zero-grid-line' : 'grid-line'}"/><text x="${left - 12}" y="${gridY + 4}" text-anchor="end" class="axis-label">${moneyFormatter.format(toMan(value))}</text>`;
+    const label = moneyFormatter.format(toMan(value));
+    if ((label === zeroLabel && gridY !== zeroY) || seenBalanceLabels.has(label)) return '';
+    seenBalanceLabels.add(label);
+    return `<line x1="${left}" y1="${gridY}" x2="${right}" y2="${gridY}" class="${gridY === zeroY ? 'zero-grid-line' : 'grid-line'}"/><text x="${left - 12}" y="${gridY + 4}" text-anchor="end" class="axis-label">${label}</text>`;
   }).join('');
+  const seenFlowLabels = new Set();
   const flowTicks = [...new Set([flowMin, 0, flowMax])].map((value) => {
     const tickY = flowY(value);
-    return `<line x1="${right - 4}" y1="${tickY}" x2="${right}" y2="${tickY}" class="tick-line"/><text x="${right + 8}" y="${tickY + 4}" class="axis-label">${moneyFormatter.format(toMan(value))}</text>`;
+    const label = moneyFormatter.format(toMan(value));
+    if ((label === zeroLabel && value !== 0) || seenFlowLabels.has(label)) return '';
+    seenFlowLabels.add(label);
+    return `<line x1="${right - 4}" y1="${tickY}" x2="${right}" y2="${tickY}" class="tick-line"/><text x="${right + 8}" y="${tickY + 4}" class="axis-label">${label}</text>`;
   }).join('');
   const tickAges = new Set([config.currentAge, config.endAge]);
   for (let age = Math.ceil(config.currentAge / 10) * 10; age < config.endAge; age += 10) tickAges.add(age);
@@ -272,7 +290,7 @@ function renderChart(config, result) {
   const pensionMarker = config.pensionStartAge > config.currentAge && config.pensionStartAge < config.endAge
     ? `<line x1="${x(config.pensionStartAge)}" y1="${top}" x2="${x(config.pensionStartAge)}" y2="${bottom}" class="event-line"/><text x="${x(config.pensionStartAge) + 6}" y="${top + 13}" class="event-label">年金の受給開始</text>`
     : '';
-  chart.innerHTML = `<title id="chart-title">年齢ごとの資産残高と年間収支</title><desc id="chart-desc">${config.currentAge}歳から${config.endAge}歳までを表示します。左軸に資産残高、右軸に年ごとの収入、支出、収支を表示します。両軸のゼロは同じ高さです。</desc><defs><linearGradient id="asset-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#93c59c" stop-opacity=".42"/><stop offset="100%" stop-color="#93c59c" stop-opacity=".02"/></linearGradient></defs>${grids}${flowTicks}${pensionMarker}<path d="${area}" fill="url(#asset-fill)"/>${flowBars}<path d="${balanceLine}" class="balance-line"/><g id="selected-mark">${selectedMarkMarkup(config, result, selectedAge)}</g><line x1="${left}" y1="${bottom}" x2="${right}" y2="${bottom}" class="axis-line"/><line x1="${right}" y1="${top}" x2="${right}" y2="${bottom}" class="axis-line"/>${ticks}<text x="${left}" y="18" class="axis-title">万円</text><text x="${right + 6}" y="14" class="axis-title">万円／年</text><rect class="chart-hover-surface" x="${left}" y="${top}" width="${right - left}" height="${bottom - top}" aria-hidden="true"/>`;
+  chart.innerHTML = `<title id="chart-title">年齢ごとの資産残高と年間収支</title><desc id="chart-desc">${config.currentAge}歳から${config.endAge}歳までを表示します。左軸に資産残高、右軸に年ごとの収入（労働収入、年金収入、資産運用損益の合計）、支出、収支を表示します。両軸のゼロは同じ高さです。</desc><defs><linearGradient id="asset-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#93c59c" stop-opacity=".42"/><stop offset="100%" stop-color="#93c59c" stop-opacity=".02"/></linearGradient></defs>${grids}${flowTicks}${pensionMarker}<path d="${area}" fill="url(#asset-fill)"/>${flowBars}<path d="${balanceLine}" class="balance-line"/><g id="selected-mark">${selectedMarkMarkup(config, result, selectedAge)}</g><line x1="${left}" y1="${bottom}" x2="${right}" y2="${bottom}" class="axis-line"/><line x1="${right}" y1="${top}" x2="${right}" y2="${bottom}" class="axis-line"/>${ticks}<text x="${left}" y="18" class="axis-title">万円</text><text x="${right + 6}" y="14" class="axis-title">万円／年</text><rect class="chart-hover-surface" x="${left}" y="${top}" width="${right - left}" height="${bottom - top}" aria-hidden="true"/>`;
 }
 
 function renderAgeSelect(config) {
